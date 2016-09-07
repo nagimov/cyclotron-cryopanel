@@ -17,8 +17,8 @@ Ac = pi*(diam/2)^2;
 HX_L = 1;
 
 % Heat Transfer Coefficients 
-k_a = 2100;
-k_b = 2100; 
+HX_UA_a = 2100;
+HX_UA_b = 2100; 
 
 % Compute Masses
 m_a = rho_a*Ac*HX_L;
@@ -35,7 +35,7 @@ for i = 2 : mid - 1
     Cp_a = refpropm('C','T',T(i),'Q',0,'nitrogen');
     Q_in_a = rho_a * F_a * Cp_a * T(i - 1); 
     Q_out_a = rho_a * F_a * Cp_a * T(i);
-    dT(i) = (Q_in_a - Q_out_a - k_a) / (Cp_a * m_a);
+    dT(i) = (Q_in_a - Q_out_a - HX_UA_a) / (Cp_a * m_a);
 end
 
 % B - Helium DE
@@ -43,7 +43,7 @@ for i = mid + 1 : last
     Cp_b = refpropm('C','T',T(i),'Q',0,'helium'); 
     Q_in_b = rho_b * F_b * Cp_b * T(i - 1);
     Q_out_b = rho_b * F_b * Cp_b *  T(i);
-    dT(i) = (Q_in_b - Q_out_b + k_b) / (Cp_b * m_b);
+    dT(i) = (Q_in_b - Q_out_b + HX_UA_a) / (Cp_b * m_b);
 end
 
 return
