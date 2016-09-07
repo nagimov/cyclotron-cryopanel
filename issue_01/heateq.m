@@ -28,6 +28,7 @@ m_b = rho_b*Ac*HX_L;
 
 % Prepare to solve - preallocate dummy vector
 dT = zeros(2, 1);  
+
 % Prepare to solve - enter initial data into the DE 
 T(1) = T_a_in;
 T(N + 2) = T_b_in;
