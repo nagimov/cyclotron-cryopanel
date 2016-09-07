@@ -13,6 +13,8 @@ Each row contains T at each stage of the heat exchanger, for a fixed t.
 
 For N=3, columns 1-4 contain stream A, columns 5-8 contain stream B.
 
+
+
 [N2_t0_input  N2_t0_stage1 ... N2_t0_stage3 He_t0_input ... He_t0_stage3]
 
 [   .................................................................   ]
