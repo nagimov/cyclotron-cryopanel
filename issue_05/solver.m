@@ -1,18 +1,22 @@
 close all
 clear all
 clc
-global N 
+global mid last 
 
 %How many stages?
 N = 3; 
+% Compute key indicies 
+mid = N + 2;               %where He columns start
+last = 2 * (N +  1);       %last column
+
 % What is our time interval?
 t_interval = [0 10];
 % Initial conditions 
-T0(1:N+1)=80;
-T0(N+2:2*N+2)=4; 							
+T0(1 : mid - 1) = 80;
+T0(mid : last) = 4; 							
 
 % Some technical options for ode45 - to ensure accuracy 
-options = odeset('RelTol',1e-3,'AbsTol',[1e-3*ones(1,2*N+2)]);
+options = odeset('RelTol',1e-3,'AbsTol',[1e-3*ones(1,2*( N + 1 ))]);
 % Solve 
 % The solver produces matrix T with solution data. 
 % Each row contains T at each stage of the heat exchanger, for a fixed t.
