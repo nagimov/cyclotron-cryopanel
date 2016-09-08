@@ -1,3 +1,8 @@
+## Governing Equations 
+
+`d(MU)/dt = m_in * H_in - m_out * H_out + \sum Q`
+
+
 ## Matrix structure 
 
 
