@@ -11,13 +11,13 @@ last = 2 * (N +  1);       %last column
 
 %Take an intial guess 
 T0a = 80 * ones ( t + 1 , mid - 1 );
-T0b = 4 * ones ( t + 1 , mid - 1 ); 
+T0b = 4.5 * ones ( t + 1 , mid - 1 ); 
 T0 = [T0a T0b];
 
 %Solve 
 options = optimset('TolX', 1e-3, 'TolFun', 1e-3, ...
     'MaxFunEvals', 1e7, 'MaxIter', 1e7, 'Display', 'off');
-T = fsolve ( 'heateq' , T0 , options ); 
+[T,fval,exitflag,output] = fsolve ( 'heateq' , T0 , options ); 
 
 %Plot
 hold on
