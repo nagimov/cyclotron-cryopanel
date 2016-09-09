@@ -11,10 +11,10 @@ Then solver.m looks to see when `F=heateq(T)=0`
 
 **********************************************************************************************
 ```
-[N2_t0_input, N2_t0_slice1, ..., N2_t0_slice3, He_t0_input, ..., He_t0_slice3]
+[N2_t0_input, N2_t0_slice1, ..., N2_t0_sliceN, He_t0_input, ..., He_t0_sliceN]
 [   ...     ,     ...     , ...,    ...      ,    ...     , ...,     ...     ]
-[N2_ti_input, N2_ti_slice1, ..., N2_ti_slice3, He_ti_input, ..., He_ti_slice3]
+[N2_ti_input, N2_ti_slice1, ..., N2_ti_sliceN, He_ti_input, ..., He_ti_sliceN]
 [   ...     ,     ...     , ...,    ...      ,    ...     , ...,      ...    ]
-[N2_tf_input, N2_tf_slice1, ..., N2_tf_slice3, He_tf_input, ..., He_tf_slice3]
+[N2_tf_input, N2_tf_slice1, ..., N2_tf_sliceN, He_tf_input, ..., He_tf_sliceN]
 ```
 **********************************************************************************************
