@@ -1,4 +1,4 @@
-function F = heateq(T)  %Here F compute difference between our equation and zero i.e. F(T)~0. 
+function eval = heateq(T)  %Here F compute difference between our equation and zero i.e. F(T)~0. 
 global t mid last 
 
 %Time Step
@@ -18,8 +18,8 @@ As = 2 * pi * radius * HX_L;
 % Thermodynamic Parameters  
 q_a = .75;
 p_a = 101; 
-k_a = 1e6;
-k_b = 1e6; 
+k_a = 1e3;
+k_b = 1e3; 
 
 %Get U for this data 
 U_a(1,1) = refpropm('U','T',T(1,1),'Q',q_a,'nitrogen');
@@ -58,5 +58,9 @@ end
 %Ensure boundary conditions
 F(1, 1 : mid - 1) = 80 - T(1, 1 : mid - 1);
 F(1, mid : last) = 4.5 - T(1, mid : last); 
-F(t + 1, 1) = 80 - T(t + 1 ,1);
-F(t + 1, mid) = 4.5 - T(i, mid);
+F(1 : t + 1, 1) = 80 - T(t + 1 ,1);
+F(1 : t + 1, mid) = 4.5 - T(i, mid);
+
+eval=sum(sum(F)); 
+% to use fmincon we must force the SUM of the entire function to zero, not
+% each individual equation. So we sum matrix F in both directions. 
