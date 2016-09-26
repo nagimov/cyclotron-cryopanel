@@ -1,8 +1,14 @@
-function eval = heateq(T)  %Here F compute difference between our equation and zero i.e. F(T)~0. 
-global t mid last 
+function [x,fval,exitflag] =  heateq(j) 
 
-%Time Step
-delta_t = .001;
+global mid last Tsol delta_t 
+options = optimset('TolX', 1e-7, 'TolFun', 1e-7, ...
+    'MaxFunEvals', 1e7, 'MaxIter', 1e7, 'Display', 'off');
+x0 = Tsol(j-1,:); 
+
+[x,fval,exitflag] = fsolve ( @eqgen , x0  , options);
+
+
+function F = eqgen(T)  %Here F compute difference between our equation and zero i.e. F(T)~0. 
 
 %Data
 m = 1000; 
@@ -17,50 +23,41 @@ As = 2 * pi * radius * HX_L;
 
 % Thermodynamic Parameters  
 q_a = .75;
-p_a = 101; 
-k_a = 1e3;
-k_b = 1e3; 
-
-%Get U for this data 
-u_a(1,1) = refpropm('U','T',T(1,1),'Q',q_a,'nitrogen');
-u_b(1,1) = refpropm('U','T',T(1,mid),'P',p_a,'helium');
+p_a = 10; 
+k_a = 1e5;
+k_b = 1e5; 
 
 %Equations Nitrogen 
-for j = 2 : mid - 1 %slices
-for i = 2 : t + 1 %time step 
+for i = 2 : mid - 1 %slices
 
-delta_T = T(i, last - j + 1 ) - T(i,j);
-u_a(i,j) = refpropm('U','T',T(i,j),'Q',q_a,'nitrogen');
-h_a_in(i,j) = refpropm('H','T',T(i,j-1),'Q',q_a,'nitrogen');
-h_a_out(i,j) = refpropm('H','T',T(i,j),'Q',q_a,'nitrogen');
+delta_T = T(last - i + 1 ) - T(i);
+U_a(i) = refpropm('U','T',T(i),'P',p_a,'nitrogen');
+U_a_ini(i) = refpropm('U','T',Tsol(j-1,i),'P',p_a,'nitrogen');
+H_a_in(i) = refpropm('H','T',T(i-1),'P',p_a,'nitrogen');
+H_a_out(i) = refpropm('H','T',T(i),'P',p_a,'nitrogen');
 Q_cond_a = k_a * As / HX_L * delta_T ;
 
-F(i,j) = u_a(i-1,j) - u_a(i,j) + delta_t / M * ( m * h_a_in(i,j) - m * h_a_out(i,j) + Q_cond_a ); 
+F(i) = U_a(i) - U_a_ini(i) + delta_t / M * ( m * H_a_in(i) - m * H_a_out(i) + Q_cond_a ); 
 
 end 
-end 
+ 
 
 %Equations Helium  
-for j = mid + 1 : last %slices
-for i = 2 : t + 1  %time step 
-
-delta_T = T(i, last - j + 1 ) - T(i,j); 
-u_b(i,j) = refpropm('U','T',T(i,j),'P',p_a,'helium');
-h_b_in(i,j) = refpropm('H','T',T(i,j-1),'P',p_a,'helium');
-h_b_out(i,j) = refpropm('H','T',T(i,j),'P',p_a,'helium');
+for i = mid + 1 : last %slices
+    
+delta_T = T(last - i + 1) - T(i); 
+U_b(i) = refpropm('U','T',T(i),'P',p_a,'helium');
+U_b_ini(i) = refpropm('U','T',Tsol(j-1,i),'P',p_a,'helium');
+H_b_in(i) = refpropm('H','T',T(i-1),'P',p_a,'helium');
+H_b_out(i) = refpropm('H','T',T(i),'P',p_a,'helium');
 Q_cond_b = k_b * As / HX_L * delta_T;
 
-F(i,j) = u_b(i-1,j) - u_b(i,j) + delta_t / M * ( m * h_b_in(i,j) - m * h_b_out(i,j) + Q_cond_b ); 
+F(i) = U_b(i) - U_b_ini(i) + delta_t / M * ( m * H_b_in(i) - m * H_b_out(i) + Q_cond_b ); 
 
-end 
 end
 
-%Ensure boundary conditions
-F(1, 1 : mid - 1) = 80 - T(1, 1 : mid - 1);
-F(1, mid : last) = 4.5 - T(1, mid : last); 
-F(1 : t + 1, 1) = 80 - T(t + 1 ,1);
-F(1 : t + 1, mid) = 4.5 - T(i, mid);
+F(1) = 80 - T(1);
+F(mid) = 4.5 - T(mid);
 
-eval=sum(sum(F)); 
-% to use fmincon we must force the SUM of the entire function to zero, not
-% each individual equation. So we sum matrix F in both directions. 
+end
+end 
