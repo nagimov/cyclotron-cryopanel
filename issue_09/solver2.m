@@ -102,10 +102,10 @@ function RN_01
     		for i = 1 : HX_slices
     			if i == 1
 					h_a_delta(i) = h_a_in - h_a(1);
-					h_b_delta(i) = h_b_in - h_b(HX_slices);
+					h_b_delta(HX_slices) = h_b_in - h_b(HX_slices);
 	            else
     				h_a_delta(i) = h_a(i - 1) - h_a(i);
-    				h_b_delta(i) = h_b(HX_slices + 2 - i) - h_b(HX_slices + 1 - i);
+    				h_b_delta(HX_slices + 1 - i) = h_b(HX_slices + 2 - i) - h_b(HX_slices + 1 - i);
 	            end
 			end
 
