@@ -5,8 +5,8 @@ function RN_01
 
     % INTEGRATOR DATA
     t_delta = 0.1;  % time step, s
-    t = 5;  % number of time steps, -
-    HX_slices = 5;  % number of slices, -
+    t = 20;  % number of time steps, -
+    HX_slices = 10;  % number of slices, -
 
     % HX DATA
     m = 1;  % mass flow, kg/s
@@ -68,17 +68,15 @@ function RN_01
 
         % compute difference between the equation and zero
 	    function F = eqgen(H)
-	    	F_a = zeros(1, HX_slices);
-	    	F_b = zeros(1, HX_slices);
-            T_a = zeros(1, HX_slices);
-	    	T_b = zeros(1, HX_slices);
-	    	u_b = zeros(1, HX_slices);
-	    	u_a = zeros(1, HX_slices);
-	    	u_b_prev = zeros(1, HX_slices);
-	    	u_a_prev = zeros(1, HX_slices);
-			h_a_delta = zeros(1, HX_slices);
-			h_b_delta = zeros(1, HX_slices);
-
+            F_a = zeros(1, HX_slices); 
+            F_b = zeros(1, HX_slices); 
+            u_a = zeros(1, HX_slices); 
+            u_b = zeros(1, HX_slices);
+            u_a_prev = zeros(1, HX_slices); 
+            u_b_prev = zeros(1, HX_slices);            
+            h_a_delta = zeros(1, HX_slices); 
+            h_b_delta = zeros(1, HX_slices); 
+            
 			h_a = H(1 : HX_slices);
 			h_b = H(HX_slices + 1 : 2 * HX_slices);
             p_a = p_a_0;
@@ -87,10 +85,10 @@ function RN_01
 			% energy equations
 			for i = 1 : HX_slices  % slicing loop
 
-				T_a(i) = rp_thp(h_a(i), p_a(i), fluid_a);
-				T_b(i) = rp_thp(h_b(i), p_b(i), fluid_b);
+				T_a = rp_thp(h_a(i), p_a(i), fluid_a);
+				T_b = rp_thp(h_b(i), p_b(i), fluid_b);
 
-				T_a_delta = T_b(i) - T_a(i);
+				T_a_delta = T_b - T_a;
 				T_b_delta = -T_a_delta;
 				
 				Q_cond_a = HX_UA / HX_slices * T_a_delta;
@@ -100,11 +98,7 @@ function RN_01
 				Q_cond_b = HX_UA / HX_slices * T_b_delta;
 				u_b(i) = rp_uhp(h_b(i), p_b(i), fluid_b);
 				u_b_prev(i) = rp_uhp(h_b_prev(i), p_b(i), fluid_b);
-                
-			end
-    		
-    		% enthalpy deltas
-    		for i = 1 : HX_slices
+ 
     			if i == 1
 					h_a_delta(i) = h_a_in - h_a(1);
 					h_b_delta(HX_slices) = h_b_in - h_b(HX_slices);
