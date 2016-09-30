@@ -1,8 +1,7 @@
-function RN_03
+function h_sol = RN_03
     clc; clear all;
     close all;
     tic
-    global t_delta t HX_slices h_sol
 
     % INTEGRATOR DATA
     t_delta = 0.1;  % time step, s
@@ -19,47 +18,66 @@ function RN_03
     p_a_in = 101325;  % inlet pressure of stream A, Pa
     T_a_in = 100;  % inlet temperature of stream A, K
     h_a_in = rp_htp(T_a_in, p_a_in, fluid_a);  % inlet enthalpy of stream A, J/kg
-    u_a_in = rp_uhp(h_a_in, p_a_in, fluid_a);  % inlet internal energy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
     p_b_in = 101325;  % inlet pressure of stream B, Pa
     T_b_in = 200;  % inlet temperature of stream B, K
     h_b_in = rp_htp(T_b_in, p_b_in, fluid_b);  % inlet enthalpy of stream B, J/kg
-    u_b_in = rp_uhp(h_b_in, p_b_in, fluid_b);  % inlet internal energy of stream B, J/kg
 
     % INITIAL CONDITIONS
-    for i = 1 : HX_slices
-        p_a_0(i) = p_a_in;  % Pa
-        T_a_0(i) = T_a_in;  % K
-        h_a_0(i) = rp_htp(T_a_in, p_a_in, fluid_a);  % J/kg
-        p_b_0(i) = p_b_in;  % Pa
-        T_b_0(i) = T_b_in;  % K
-        h_b_0(i) = rp_htp(T_b_in, p_b_in, fluid_b);  % J/kg
-	end
+    h_a_0 = h_a_in*ones(1, HX_slices);
+    h_b_0 = h_b_in*ones(1, HX_slices);
+    p_a_0 = p_a_in*ones(1, HX_slices);
+    p_b_0 = p_b_in*ones(1, HX_slices);
 	h_sol(1, :) = [h_a_0    h_b_0];
 
 	% SOLVER
 	for j = 2 : t + 1
-		[h_sol(j, :), fval(j, :), exitflag(j, :)] = heateq(j);
-		toc
-	end
+		[h_sol(j, :), fval, exitflag] = heateq(j);
+        toc
+        disp(['Time step completed ' num2str(j-1)...
+        ' Time ' num2str(toc/60) ' min '...
+        ' Fval ' num2str(sum(fval)) ...
+        ' Exit Flag ' num2str(exitflag)])
+    end
+    
+    %CONVERT TO T    
+    T_a = zeros(t + 1, HX_slices);
+    T_b = zeros(t + 1, HX_slices);
 
-	hold on
-    plot(1:HX_slices, h_sol(:, 1 : HX_slices))
+    for i = 1 : t + 1
+        for j =  1 : HX_slices
+            T_a(i,j) = rp_thp(h_sol(i,j), p_a_in, fluid_a);
+            T_b(i,j) = rp_thp(h_sol(i,j + HX_slices), p_b_in, fluid_b);
+        end
+    end  
+    
+    % HE PLOT 
+    plot(1:HX_slices, T_a)
     xlabel('Slices')
-    ylabel('Enthalpy')
+    ylabel('Temperature')
+    title('He')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print('plot_N2','-dpng','-r0')
+    
+    % N2 PLOT
     figure
-    plot(1:HX_slices, h_sol(:, (HX_slices + 1 : 2 * HX_slices)))
+    plot(1:HX_slices, T_b)
     xlabel('Slices')
-    ylabel('Enthalpy')
+    ylabel('Temperature')
+    title('N_2')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print('plot_HE','-dpng','-r0')
 
 	function [x, fval, exitflag] = heateq(j)  % time iteration
 		options = optimset('TolX', 1e-7, 'TolFun', 1e-7, ...
 		    			   'MaxFunEvals', 1e7, 'MaxIter', 1e7, ...
 		    			   'Display', 'iter');
-		h_sol_prev = h_sol(j - 1, :);
-        h_a_prev = h_sol_prev(1 : HX_slices);
-        h_b_prev = h_sol_prev(HX_slices + 1 : 2 * HX_slices);
-		[x, fval, exitflag] = fsolve(@eqgen, h_sol_prev, options);
+        h_a_prev = h_sol(j - 1, 1 : HX_slices);
+        h_b_prev = h_sol(j - 1, HX_slices + 1 : 2 * HX_slices);
+        guess = [h_a_prev h_b_prev];
+		[x, fval, exitflag] = fsolve(@eqgen, guess, options);
 		%[x, fval, exitflag] = fminsearch(@eqgen, h_sol_prev, options);
 		% compute difference between the equation and zero
 	    function F = eqgen(H)
@@ -73,29 +91,33 @@ function RN_03
 			h_b_delta = zeros(1, HX_slices);
 			Q_cond_a = zeros(1, HX_slices);
 			Q_cond_b = zeros(1, HX_slices);
+            T_a = zeros(1, HX_slices);
+			T_b = zeros(1, HX_slices);
 			T_a_delta = zeros(1, HX_slices);
 			T_b_delta = zeros(1, HX_slices);
 
 			h_a = H(1 : HX_slices);
 			h_b = H(HX_slices + 1 : 2 * HX_slices);
+            p_a = p_a_0;
+            p_b = p_b_0;
 
 			% energy equations
 			for i = 1 : HX_slices  % slicing loop
-				% p_a_0
-				% p_b_0
-				T_a(i) = rp_thp(h_a(i), p_a_0(i), fluid_a);
-				T_b(i) = rp_thp(h_b(i), p_b_0(i), fluid_b);
+
+				T_a(i) = rp_thp(h_a(i), p_a(i), fluid_a);
+				T_b(i) = rp_thp(h_b(i), p_b(i), fluid_b);
 
 				T_a_delta(i) = T_b(i) - T_a(i);
 				T_b_delta(i) = -T_a_delta(i);
 				
 				Q_cond_a(i) = HX_UA / HX_slices * T_a_delta(i);
-				u_a(i) = rp_uhp(h_a(i), p_a_0(i), fluid_a);
-				u_a_prev(i) = rp_uhp(h_a_prev(i), p_a_0(i), fluid_a);
+				u_a(i) = rp_uhp(h_a(i), p_a(i), fluid_a);
+				u_a_prev(i) = rp_uhp(h_a_prev(i), p_a(i), fluid_a);
 
 				Q_cond_b(i) = HX_UA / HX_slices * T_b_delta(i);
-				u_b(i) = rp_uhp(h_b(i), p_b_0(i), fluid_b);
-				u_b_prev(i) = rp_uhp(h_b_prev(i), p_b_0(i), fluid_b);
+				u_b(i) = rp_uhp(h_b(i), p_b(i), fluid_b);
+				u_b_prev(i) = rp_uhp(h_b_prev(i), p_b(i), fluid_b);
+                
 			end
     		
     		% enthalpy deltas
@@ -118,4 +140,4 @@ function RN_03
 
 		end
 	end
-end  % RN_01
+end  % RN_03
