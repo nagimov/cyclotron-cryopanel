@@ -1,4 +1,4 @@
-function RN_01
+function RN_03
     clc; clear all;
     close all;
     tic
@@ -7,7 +7,7 @@ function RN_01
     % INTEGRATOR DATA
     t_delta = 0.1;  % time step, s
     t = 5;  % number of time steps, -
-    HX_slices = 5;  % number of slices, -
+    HX_slices = 10;  % number of slices, -
 
     % HX DATA
     m = 1;  % mass flow, kg/s
@@ -18,22 +18,22 @@ function RN_01
     fluid_a = 'helium';  % stream A fluid name
     p_a_in = 101325;  % inlet pressure of stream A, Pa
     T_a_in = 100;  % inlet temperature of stream A, K
-    h_a_in = refpropm('H', 'T', T_a_in, 'P', p_a_in, fluid_a);  % inlet enthalpy of stream A, J/kg
-    u_a_in = refpropm('U', 'H', h_a_in, 'P', p_a_in, fluid_a);  % inlet internal energy of stream A, J/kg
+    h_a_in = rp_htp(T_a_in, p_a_in, fluid_a);  % inlet enthalpy of stream A, J/kg
+    u_a_in = rp_uhp(h_a_in, p_a_in, fluid_a);  % inlet internal energy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
     p_b_in = 101325;  % inlet pressure of stream B, Pa
     T_b_in = 200;  % inlet temperature of stream B, K
-    h_b_in = refpropm('H', 'T', T_b_in, 'P', p_b_in, fluid_b);  % inlet enthalpy of stream B, J/kg
-    u_b_in = refpropm('U', 'H', h_b_in, 'P', p_b_in, fluid_b);  % inlet internal energy of stream B, J/kg
+    h_b_in = rp_htp(T_b_in, p_b_in, fluid_b);  % inlet enthalpy of stream B, J/kg
+    u_b_in = rp_uhp(h_b_in, p_b_in, fluid_b);  % inlet internal energy of stream B, J/kg
 
     % INITIAL CONDITIONS
     for i = 1 : HX_slices
         p_a_0(i) = p_a_in;  % Pa
         T_a_0(i) = T_a_in;  % K
-        h_a_0(i) = refpropm('H', 'T', T_a_in, 'P', p_a_in, fluid_a);  % J/kg
+        h_a_0(i) = rp_htp(T_a_in, p_a_in, fluid_a);  % J/kg
         p_b_0(i) = p_b_in;  % Pa
         T_b_0(i) = T_b_in;  % K
-        h_b_0(i) = refpropm('H', 'T', T_b_in, 'P', p_b_in, fluid_b);  % J/kg
+        h_b_0(i) = rp_htp(T_b_in, p_b_in, fluid_b);  % J/kg
 	end
 	h_sol(1, :) = [h_a_0    h_b_0];
 
