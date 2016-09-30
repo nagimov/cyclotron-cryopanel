@@ -1,11 +1,11 @@
-function [T_a, T_b, T_w_sol] = RN_04
+function [T_a_sol, T_b_sol, T_w_sol] = RN_04
     clc; clear all;
     close all;
     tic
 
     % INTEGRATOR DATA
     t_delta = 0.1;  % time step, s
-    t = 20;  % number of time steps, -
+    t = 5;  % number of time steps, -
     HX_slices = 10;  % number of slices, -
 
     % HX DATA
@@ -32,7 +32,8 @@ function [T_a, T_b, T_w_sol] = RN_04
     p_a_0 = p_a_in*ones(1, HX_slices);
     p_b_0 = p_b_in*ones(1, HX_slices);
     T_w_0 = T_w_in*ones(1, HX_slices); 
-	h_sol(1, :) = [h_a_0    h_b_0];
+	h_a_sol(1, :) = h_a_0;
+    h_b_sol(1, :) = h_b_0; 
     T_w_sol(1, :) = T_w_0;
 
 	% SOLVER
@@ -42,63 +43,64 @@ function [T_a, T_b, T_w_sol] = RN_04
             ' Time ' num2str(toc/60) ' min '...
             ' Fval ' num2str(sum(fval)) ...
             ' Exit Flag ' num2str(exitflag)])
-        h_sol(j, :) = sol(1 : 2 * HX_slices );
+        h_a_sol(j, :) = sol(1 : 1 * HX_slices );
+        h_b_sol(j, :) = sol(1 * HX_slices + 1 : 2 * HX_slices );
         T_w_sol(j, :) = sol(2 * HX_slices + 1 : 3 * HX_slices );
     end
     
     %CONVERT TO T    
-    T_a = zeros(t + 1, HX_slices);
-    T_b = zeros(t + 1, HX_slices);
+    T_a_sol = zeros(t + 1, HX_slices);
+    T_b_sol = zeros(t + 1, HX_slices);
 
     for i = 1 : t + 1
         for j =  1 : HX_slices
-            T_a(i,j) = rp_thp(h_sol(i,j), p_a_in, fluid_a);
-            T_b(i,j) = rp_thp(h_sol(i,j + HX_slices), p_b_in, fluid_b);
+            T_a_sol(i,j) = rp_thp(h_a_sol(i,j), p_a_in, fluid_a);
+            T_b_sol(i,j) = rp_thp(h_b_sol(i,j), p_b_in, fluid_b);
         end
     end  
     
     % HE PLOT 
-    plot(1:HX_slices, T_a)
+    plot(1:HX_slices, T_a_sol)
     xlabel('Slices')
     ylabel('Temperature')
     title('He')
     fig = gcf;
     fig.PaperPositionMode = 'auto';
-    print('plot_N2','-dpng','-r0')
+    print(['plot_N2' num2str(HX_slices)],'-dpng','-r0')
     
     % N2 PLOT
     figure
-    plot(1:HX_slices, T_b)
+    plot(1:HX_slices, T_b_sol)
     xlabel('Slices')
     ylabel('Temperature')
     title('N_2')
     fig = gcf;
     fig.PaperPositionMode = 'auto';
-    print('plot_HE','-dpng','-r0')
+    print(['plot_HE' num2str(HX_slices)],'-dpng','-r0')
     
     % OVERALL PLOT
     figure 
     hold on 
-    plot(1:HX_slices, T_a)
-    plot(1:HX_slices, T_b)
-    plot(1:HX_slices, T_w_sol)
+    plot(1:HX_slices, T_a_sol, 'r')
+    plot(1:HX_slices, T_b_sol, 'b')
+    plot(1:HX_slices, T_w_sol, 'g')
     xlabel('Slices')
     ylabel('Temperature')
     title('Overall')
     axis([1 HX_slices T_a_in T_b_in])
     fig = gcf;
     fig.PaperPositionMode = 'auto';
-    print('plot_issue12','-dpng','-r0')
+    print(['plot_overall' num2str(HX_slices)],'-dpng','-r0')
 
 	function [x, fval, exitflag] = heateq(j)  % time iteration
 		options = optimset('TolX', 1e-7, 'TolFun', 1e-7, ...
 		    			   'MaxFunEvals', 1e7, 'MaxIter', 1e7, ...
 		    			   'Display', 'iter');
-        h_a_prev = h_sol(j - 1, 1 : HX_slices);
-        h_b_prev = h_sol(j - 1, HX_slices + 1 : 2 * HX_slices);
+        h_a_prev = h_a_sol(j - 1, :);
+        h_b_prev = h_b_sol(j - 1, :);
         T_w_prev = T_w_sol(j - 1, :); 
-        guess = [h_a_prev h_b_prev T_w_prev];
-		[x, fval, exitflag] = fsolve(@eqgen, guess, options);
+        sol_guess = [h_a_prev h_b_prev T_w_prev];
+		[x, fval, exitflag] = fsolve(@eqgen, sol_guess, options);
 		%[x, fval, exitflag] = fminsearch(@eqgen, h_sol_prev, options);
 		% compute difference between the equation and zero
 	    function F = eqgen(sol)
@@ -119,8 +121,8 @@ function [T_a, T_b, T_w_sol] = RN_04
 			T_bw_delta = zeros(1, HX_slices);
             cp_w = zeros(1, HX_slices); 
 
-			h_a = sol(1 : HX_slices);
-			h_b = sol(HX_slices + 1 : 2 * HX_slices);
+			h_a = sol(1 : 1 * HX_slices);
+			h_b = sol(1 * HX_slices + 1 : 2 * HX_slices);
             T_w = sol(2 * HX_slices + 1 : 3 * HX_slices);
             p_a = p_a_0;
             p_b = p_b_0;
