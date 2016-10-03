@@ -1,11 +1,11 @@
-function h_sol = RN_03
+function [T_a, T_b] = RN_03
     clc; clear all;
     close all;
     tic
 
     % INTEGRATOR DATA
     t_delta = 0.1;  % time step, s
-    t = 5;  % number of time steps, -
+    t = 20;  % number of time steps, -
     HX_slices = 10;  % number of slices, -
 
     % HX DATA
@@ -40,7 +40,7 @@ function h_sol = RN_03
         ' Exit Flag ' num2str(exitflag)])
     end
     
-    %CONVERT TO T    
+    %CONVERT TO T AND CALCULATE Q   
     T_a = zeros(t + 1, HX_slices);
     T_b = zeros(t + 1, HX_slices);
 
@@ -48,9 +48,13 @@ function h_sol = RN_03
         for j =  1 : HX_slices
             T_a(i,j) = rp_thp(h_sol(i,j), p_a_in, fluid_a);
             T_b(i,j) = rp_thp(h_sol(i,j + HX_slices), p_b_in, fluid_b);
+            T_a_delta(i,j) = T_b(i,j) - T_a(i,j);
+			T_b_delta(i,j) = -T_a_delta(i,j);
+			Q_cond_a(i,j) = HX_UA / HX_slices * T_a_delta(i,j);
+            Q_cond_b(i,j) = HX_UA / HX_slices * T_b_delta(i,j);
         end
-    end  
-    
+    end     
+   
     % HE PLOT 
     plot(1:HX_slices, T_a)
     xlabel('Slices')
@@ -58,7 +62,7 @@ function h_sol = RN_03
     title('He')
     fig = gcf;
     fig.PaperPositionMode = 'auto';
-    print('plot_N2','-dpng','-r0')
+    print(['plot_N2' num2str(HX_slices)],'-dpng','-r0')
     
     % N2 PLOT
     figure
@@ -68,7 +72,33 @@ function h_sol = RN_03
     title('N_2')
     fig = gcf;
     fig.PaperPositionMode = 'auto';
-    print('plot_HE','-dpng','-r0')
+    print(['plot_HE' num2str(HX_slices)],'-dpng','-r0')
+    
+    % OVERALL PLOT 
+    figure 
+    hold on 
+    plot(1:HX_slices, T_a,'r')
+    plot(1:HX_slices, T_b,'b')
+    xlabel('Slices')
+    ylabel('Temperature')
+    title('Overall')
+    axis([1 HX_slices T_a_in T_b_in])
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print(['plot_overall' num2str(HX_slices)],'-dpng','-r0')
+    
+    % OVERALL Q PLOT 
+    figure 
+    hold on 
+    plot(1:HX_slices, Q_cond_a,'r')
+    plot(1:HX_slices, Q_cond_b,'b')
+    xlabel('Slices')
+    ylabel('Heat (Q)')
+    axis([1 HX_slices -1e5 1e5])
+    title('Overall')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print(['plot_Q' num2str(HX_slices)],'-dpng','-r0')    
 
 	function [x, fval, exitflag] = heateq(j)  % time iteration
 		options = optimset('TolX', 1e-7, 'TolFun', 1e-7, ...
@@ -111,15 +141,15 @@ function h_sol = RN_03
 				T_b_delta(i) = -T_a_delta(i);
 				
 				Q_cond_a(i) = HX_UA / HX_slices * T_a_delta(i);
-				u_a(i) = rp_uhp(h_a(i), p_a(i), fluid_a);
+                u_a(i) = rp_uhp(h_a(i), p_a(i), fluid_a);
 				u_a_prev(i) = rp_uhp(h_a_prev(i), p_a(i), fluid_a);
 
 				Q_cond_b(i) = HX_UA / HX_slices * T_b_delta(i);
 				u_b(i) = rp_uhp(h_b(i), p_b(i), fluid_b);
 				u_b_prev(i) = rp_uhp(h_b_prev(i), p_b(i), fluid_b);
                 
-			end
-    		
+            end
+            
     		% enthalpy deltas
     		for i = 1 : HX_slices
     			if i == 1
