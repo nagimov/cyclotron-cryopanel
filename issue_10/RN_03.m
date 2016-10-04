@@ -1,11 +1,11 @@
-function [T_a, T_b] = RN_03
+function [T_a, T_b] = RN_03 %First PH-version 
     clc; clear all;
     close all;
     tic
 
     % INTEGRATOR DATA
     t_delta = 0.1;  % time step, s
-    t = 20;  % number of time steps, -
+    t = 5;  % number of time steps, -
     HX_slices = 10;  % number of slices, -
 
     % HX DATA
@@ -48,10 +48,6 @@ function [T_a, T_b] = RN_03
         for j =  1 : HX_slices
             T_a(i,j) = rp_thp(h_sol(i,j), p_a_in, fluid_a);
             T_b(i,j) = rp_thp(h_sol(i,j + HX_slices), p_b_in, fluid_b);
-            T_a_delta(i,j) = T_b(i,j) - T_a(i,j);
-			T_b_delta(i,j) = -T_a_delta(i,j);
-			Q_cond_a(i,j) = HX_UA / HX_slices * T_a_delta(i,j);
-            Q_cond_b(i,j) = HX_UA / HX_slices * T_b_delta(i,j);
         end
     end     
    
@@ -86,19 +82,6 @@ function [T_a, T_b] = RN_03
     fig = gcf;
     fig.PaperPositionMode = 'auto';
     print(['plot_overall' num2str(HX_slices)],'-dpng','-r0')
-    
-    % OVERALL Q PLOT 
-    figure 
-    hold on 
-    plot(1:HX_slices, Q_cond_a,'r')
-    plot(1:HX_slices, Q_cond_b,'b')
-    xlabel('Slices')
-    ylabel('Heat (Q)')
-    axis([1 HX_slices -1e5 1e5])
-    title('Overall')
-    fig = gcf;
-    fig.PaperPositionMode = 'auto';
-    print(['plot_Q' num2str(HX_slices)],'-dpng','-r0')    
 
 	function [x, fval, exitflag] = heateq(j)  % time iteration
 		options = optimset('TolX', 1e-7, 'TolFun', 1e-7, ...
@@ -167,7 +150,6 @@ function [T_a, T_b] = RN_03
 			end			
 			% final exit vector
 			F = [F_a    F_b];
-
 		end
 	end
 end  % RN_03
