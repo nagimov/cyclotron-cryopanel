@@ -1,4 +1,5 @@
 function [T_a, T_b] = RN_03_a %Phase change demonstrated 
+    addpath('H:\coolprop_lib')
     clc; clear all;
     close all;
     tic
@@ -7,6 +8,7 @@ function [T_a, T_b] = RN_03_a %Phase change demonstrated
     t_delta = 0.1;  % time step, s
     t = 20;  % number of time steps, -
     HX_slices = 10;  % number of slices, -
+    lib = 'CP'; 
 
     % HX DATA
     m = 1;  % mass flow, kg/s
@@ -16,18 +18,18 @@ function [T_a, T_b] = RN_03_a %Phase change demonstrated
     % INITIAL DATA
     fluid_a = 'helium';  % stream A fluid name
     p_a_in = 101325;  % inlet pressure of stream A, Pa
-    q_a_in = .5;  % inlet temperature of stream A, K
-    h_a_in = rp_hpq(p_a_in, q_a_in, fluid_a);  % inlet enthalpy of stream A, J/kg
+    q_a_in = .25;  % inlet temperature of stream A, K
+    h_a_in = prop_hqp(q_a_in, p_a_in, fluid_a, lib);  % inlet enthalpy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
     p_b_in = 101325;  % inlet pressure of stream B, Pa
     T_b_in = 100;  % inlet temperature of stream B, K
-    h_b_in = rp_htp(T_b_in, p_b_in, fluid_b);  % inlet enthalpy of stream B, J/kg
+    h_b_in = prop_htp(T_b_in, p_b_in, fluid_b, lib);  % inlet enthalpy of stream B, J/kg
 
     % INITIAL CONDITIONS
-    h_a_0 = h_a_in*ones(1, HX_slices);
-    h_b_0 = h_b_in*ones(1, HX_slices);
-    p_a_0 = p_a_in*ones(1, HX_slices);
-    p_b_0 = p_b_in*ones(1, HX_slices);
+    h_a_0 = h_a_in * ones(1, HX_slices);
+    h_b_0 = h_b_in * ones(1, HX_slices);
+    p_a_0 = p_a_in * ones(1, HX_slices);
+    p_b_0 = p_b_in * ones(1, HX_slices);
 	h_sol(1, :) = [h_a_0    h_b_0];
 
 	% SOLVER
@@ -40,14 +42,14 @@ function [T_a, T_b] = RN_03_a %Phase change demonstrated
         ' Exit Flag ' num2str(exitflag)])
     end
     
-    %CONVERT TO T AND CALCULATE Q   
+    % CONVERT TO T AND CALCULATE Q   
     T_a = zeros(t + 1, HX_slices);
     T_b = zeros(t + 1, HX_slices);
 
     for i = 1 : t + 1
         for j =  1 : HX_slices
-            T_a(i,j) = rp_thp(h_sol(i,j), p_a_in, fluid_a);
-            T_b(i,j) = rp_thp(h_sol(i,j + HX_slices), p_b_in, fluid_b);
+            T_a(i,j) = prop_thp(h_sol(i,j), p_a_in, fluid_a, lib);
+            T_b(i,j) = prop_thp(h_sol(i,j + HX_slices), p_b_in, fluid_b, lib);
         end
     end     
    
@@ -117,19 +119,19 @@ function [T_a, T_b] = RN_03_a %Phase change demonstrated
 			% energy equations
 			for i = 1 : HX_slices  % slicing loop
 
-				T_a(i) = rp_thp(h_a(i), p_a(i), fluid_a);
-				T_b(i) = rp_thp(h_b(i), p_b(i), fluid_b);
+				T_a(i) = prop_thp(h_a(i), p_a(i), fluid_a, lib);
+				T_b(i) = prop_thp(h_b(i), p_b(i), fluid_b, lib);
 
 				T_a_delta(i) = T_b(i) - T_a(i);
 				T_b_delta(i) = -T_a_delta(i);
 				
 				Q_cond_a(i) = HX_UA / HX_slices * T_a_delta(i);
-                u_a(i) = rp_uhp(h_a(i), p_a(i), fluid_a);
-				u_a_prev(i) = rp_uhp(h_a_prev(i), p_a(i), fluid_a);
+                u_a(i) = prop_uhp(h_a(i), p_a(i), fluid_a, lib);
+				u_a_prev(i) = prop_uhp(h_a_prev(i), p_a(i), fluid_a, lib);
 
 				Q_cond_b(i) = HX_UA / HX_slices * T_b_delta(i);
-				u_b(i) = rp_uhp(h_b(i), p_b(i), fluid_b);
-				u_b_prev(i) = rp_uhp(h_b_prev(i), p_b(i), fluid_b);
+				u_b(i) = prop_uhp(h_b(i), p_b(i), fluid_b, lib);
+				u_b_prev(i) = prop_uhp(h_b_prev(i), p_b(i), fluid_b, lib);
                 
             end
             
