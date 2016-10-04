@@ -1,30 +1,32 @@
 function [T_a_sol, T_b_sol, T_w_sol] = RN_05 %Time step adjustement
+    addpath('H:\coolprop_lib')
     clc; clear all;
     close all;
     tic
 
     % INTEGRATOR DATA
     t_delta = 0.1;  % time step, s
-    t = 20;  % number of time steps, -
+    t = 5;  % number of time steps, -
     HX_slices = 10;  % number of slices, -
     N = 2; % frequency of calcuing Q 
+    lib = 'CP'; 
 
     % HX DATA
     m = 1;  % mass flow, kg/s
     M = 1;  % mass of streams content within a cell, kg
     M_w = 1; % mass of wall, kg 
-    HX_UA_aw = 10000;  % HX coefficient, stream A to wall, W/K
-    HX_UA_bw = 10000;  % HX coefficient, stream B to wall, W/K
-
+    HX_UA_data = {'nitrogen', 10000; ...
+                    'helium', 10000}; % HX coefficient, W/K            
+               
     % INITIAL DATA
     fluid_a = 'helium';  % stream A fluid name
     p_a_in = 101325;  % inlet pressure of stream A, Pa
     T_a_in = 100;  % inlet temperature of stream A, K
-    h_a_in = rp_htp(T_a_in, p_a_in, fluid_a);  % inlet enthalpy of stream A, J/kg
+    h_a_in = prop_htp(T_a_in, p_a_in, fluid_a, lib);  % inlet enthalpy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
     p_b_in = 101325;  % inlet pressure of stream B, Pa
     T_b_in = 200;  % inlet temperature of stream B, K
-    h_b_in = rp_htp(T_b_in, p_b_in, fluid_b);  % inlet enthalpy of stream B, J/kg
+    h_b_in = prop_htp(T_b_in, p_b_in, fluid_b, lib);  % inlet enthalpy of stream B, J/kg
     T_w_in = 150; 
 
     % INITIAL CONDITIONS
@@ -49,14 +51,32 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_05 %Time step adjustement
         T_w_sol(j, :) = sol(2 * HX_slices + 1 : 3 * HX_slices );
     end
     
-    %CONVERT TO T    
+    % FUNCTION THAT PULLS HX_UA DATA
+    function value = HX_UA(fluid)        
+        f = strcmp(fluid, HX_UA_data);   
+        value = HX_UA_data{f, 2};
+    end
+
+    % FUNCTION THAT CALCULATES Q
+    function Q_cond = Q_cond(h, p, T_w, fluid)
+        T = prop_thp(h, p, fluid, lib);
+        T_delta = T_w - T;
+        Q_cond = HX_UA(fluid) / HX_slices * T_delta;
+    end 
+
+    % FUNCTION TAHT COMPUTES delta_u
+    function delta_u = u_delta(h, h_prev, p, fluid)
+		delta_u = prop_uhp(h, p, fluid, lib) - prop_uhp(h_prev, p, fluid, lib); 
+    end
+    
+    % CONVERT TO T
     T_a_sol = zeros(t + 1, HX_slices);
     T_b_sol = zeros(t + 1, HX_slices);
 
     for i = 1 : t + 1
         for j =  1 : HX_slices
-            T_a_sol(i,j) = rp_thp(h_a_sol(i,j), p_a_in, fluid_a);
-            T_b_sol(i,j) = rp_thp(h_b_sol(i,j), p_b_in, fluid_b);
+            T_a_sol(i,j) = prop_thp(h_a_sol(i,j), p_a_in, fluid_a, lib);
+            T_b_sol(i,j) = prop_thp(h_b_sol(i,j), p_b_in, fluid_b, lib);
         end
     end  
     
@@ -111,13 +131,7 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_05 %Time step adjustement
         h_b_prev = h_b_sol(j - 1, :);
         T_w_prev = T_w_sol(j - 1, :); 
         sol_guess = [h_a_prev h_b_prev T_w_prev];
-		[x, fval, exitflag] = fsolve(@eqgen, sol_guess, options);
-        
-        function Q_cond = Q_cond_calc(h, p, T_w, fluid)
-            T = rp_thp(h, p, fluid);
-            T_delta = T_w - T;
-            Q_cond = HX_UA_aw / HX_slices * T_delta;
-        end    
+		[x, fval, exitflag] = fsolve(@eqgen, sol_guess, options); 
         
         % compute difference between the equation and zero
 	    function F = eqgen(sol)
@@ -125,16 +139,15 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_05 %Time step adjustement
 	    	F_a = zeros(1, HX_slices);
 	    	F_b = zeros(1, HX_slices);
    	    	F_w = zeros(1, HX_slices);
-	    	u_b = zeros(1, HX_slices);
-	    	u_a = zeros(1, HX_slices);
-	    	u_b_prev = zeros(1, HX_slices);
-	    	u_a_prev = zeros(1, HX_slices);
+	    	u_a_delta = zeros(1, HX_slices);
+	    	u_b_delta = zeros(1, HX_slices);
 			h_a_delta = zeros(1, HX_slices);
 			h_b_delta = zeros(1, HX_slices);
 			Q_cond_aw = zeros(1, HX_slices);
 			Q_cond_bw = zeros(1, HX_slices);
             Q_cond_aw_prev = zeros(1, HX_slices);
 			Q_cond_bw_prev = zeros(1, HX_slices);
+            T_w_delta = zeros(1, HX_slices); 
             cp_w = zeros(1, HX_slices); 
             
             % split solution vector 
@@ -148,8 +161,8 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_05 %Time step adjustement
 			for i = 1 : HX_slices  % slicing loop
                 
                 if rem(j, N) == 0
-                    Q_cond_aw(i) = Q_cond_calc(h_a(i),p_a(i),T_w(i),fluid_a);
-                    Q_cond_bw(i) = Q_cond_calc(h_b(i),p_b(i),T_w(i),fluid_b);
+                    Q_cond_aw(i) = Q_cond(h_a(i),p_a(i),T_w(i),fluid_a);
+                    Q_cond_bw(i) = Q_cond(h_b(i),p_b(i),T_w(i),fluid_b);
                     Q_cond_aw_prev(i) = Q_cond_aw(i);
                     Q_cond_bw_prev(i) = Q_cond_bw(i);
                 else
@@ -158,10 +171,9 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_05 %Time step adjustement
                 end     
 
                 cp_w(i) = cp(T_w(i));                 
-				u_a(i) = rp_uhp(h_a(i), p_a(i), fluid_a);
-				u_a_prev(i) = rp_uhp(h_a_prev(i), p_a(i), fluid_a);
-				u_b(i) = rp_uhp(h_b(i), p_b(i), fluid_b);   
-     			u_b_prev(i) = rp_uhp(h_b_prev(i), p_b(i), fluid_b);             
+                u_a_delta(i) = u_delta(h_a(i), h_a_prev(i), p_a(i), fluid_a);
+                u_b_delta(i) = u_delta(h_b(i), h_b_prev(i), p_b(i), fluid_b);
+                T_w_delta(i) = T_w(i) - T_w_prev(i); 
            
             % enthalpy deltas  
     			if i == 1
@@ -175,13 +187,13 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_05 %Time step adjustement
             
             % final equations 
 			for i = 1 : HX_slices
-				F_a(i) = -(u_a(i) - u_a_prev(i)) * M / t_delta + (m * h_a_delta(i) + Q_cond_aw(i));
-				F_b(i) = -(u_b(i) - u_b_prev(i)) * M / t_delta + (m * h_b_delta(i) + Q_cond_bw(i));
-                F_w(i) = -(T_w(i) - T_w_prev(i)) * M_w / t_delta + (Q_cond_aw(i) + Q_cond_bw(i)) / cp_w(i) ;
+				F_a(i) = - u_a_delta(i) * M / t_delta + m * h_a_delta(i) + Q_cond_aw(i);
+				F_b(i) = - u_b_delta(i) * M / t_delta + m * h_b_delta(i) + Q_cond_bw(i);
+                F_w(i) = - T_w_delta(i) * M_w / t_delta + (Q_cond_aw(i) + Q_cond_bw(i)) / cp_w(i) ;
             end
             
 			% combine final exit vector
 			F = [F_a  F_b  F_w];
 		end
-	end
+    end
 end  % RN_05
