@@ -1,4 +1,4 @@
-function eval = propsc_uhp(h, p, fluid, lib) 
+function eval = propsc_thp(h, p, fluid, lib) 
     
     [~, length] = size(h);
     buffer_size = 1000;
@@ -42,5 +42,5 @@ function eval = propsc_uhp(h, p, fluid, lib)
     out4=get(out4Ptr,'Value');
     out5=get(out5Ptr,'Value');
 
-    eval=out2';
+    eval=out1';
 end
