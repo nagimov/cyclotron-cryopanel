@@ -9,7 +9,7 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
     t_delta = 0.1;  % time step, s
     t = 20;  % number of time steps, -
     HX_slices = 10;  % number of slices, -
-    Wall_slices = 1;  % number of wall slices, -
+    Wall_slices = 10;  % number of wall slices, -
     N = 1 + Wall_slices + 1;  % total length of slices across HX, - 
     lib = 'CP';  % property library to use
 
@@ -18,9 +18,9 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
     M = 1;  % mass of streams content within a cell, kg
     M_w = 1;  % mass of wall section, kg 
     b_x = 1;  % length of wall section, m 
-    HX_UA_a = 5000;  % HX coefficient, W/K
-    HX_UA_b = 5000;  % HX coefficient, W/K
-    k = 5000;  % wall conductance coefficient, W/K
+    HX_UA_a = 3000;  % HX coefficient, W/K
+    HX_UA_b = 3000;  % HX coefficient, W/K
+    k = 10;  % wall conductance coefficient, W/K
 
     % INITIAL DATA
     fluid_a = 'helium';  % stream A fluid name
@@ -97,12 +97,16 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
             % Q_cond AT EDGES
             dT_dx(i,1) = T(i,2)-T(i,1);  % dT betweein stream a and wall
             dT_dx(i,N) = T(i,N-1)-T(i,N);  % dT betweein stream b and wall
+            dT_dx(i,2) = T(i,3)-T(i,2);
+            dT_dx(i,N-1) = T(i,N-1)-T(i,N-2); 
             Q_cond(i,1) = HX_UA_a / HX_slices * dT_dx(i,1);  % Q_a,aw
             Q_cond(i,N) = HX_UA_b / HX_slices * dT_dx(i,N);  % Q_b,bw
+            Q_cond(i,2) = k/b_x * dT_dx(i,2);
+            Q_cond(i,N-1) = k/b_x * dT_dx(i,N-1); 
             
             % Q_cond IN THE WALL
-            for j = 2 : N - 1
-                dT_dx(i,j) = 2*T(i,j) - T(i,j+1) - T(i,j-1);
+            for j = 3 : N - 2
+                dT_dx(i,j) = ( T(i,j+1) + T(i,j-1) -  2*T(i,j)); 
                 Q_cond(i,j) = k/b_x * dT_dx(i,j);
             end
                                     
@@ -118,9 +122,9 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
         end      
     end 
 
-    % FUNCTION THAT COMPUTES delta_u
-    function dU_dt = dU_dt(h, h_prev, p, fluid)
-		dU_dt = prop_uhp(h, p, fluid, lib) - prop_uhp(h_prev, p, fluid, lib); 
+    % FUNCTION THAT COMPUTES du_dt
+    function du_dt = du_dt(h, h_prev, p, fluid)
+		du_dt = prop_uhp(h, p, fluid, lib) - prop_uhp(h_prev, p, fluid, lib); 
     end
 
     % FUNCTION THAT CONVERTS h TO T
@@ -165,10 +169,11 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
     % OVERALL PLOT
     figure 
     hold on 
-    plot(1:HX_slices, T_a_sol(:, 8:21), 'r')
-    plot(1:HX_slices, T_b_sol(:, 8:21), 'b')
-    plot(1:HX_slices, squeeze(T_w_sol(:, 1, 8:21)), 'g')
-    %plot(1:HX_slices, squeeze(T_w_sol(:, 2, :)), 'r')
+    plot(1:HX_slices, T_a_sol, 'k')
+    plot(1:HX_slices, T_b_sol, 'r')
+    plot(1:HX_slices, squeeze(T_w_sol(:, 1, :)), 'b')
+    plot(1:HX_slices, squeeze(T_w_sol(:, Wall_slices/2, :)), 'g')
+    plot(1:HX_slices, squeeze(T_w_sol(:, Wall_slices, :)), 'm')
     xlabel('Slices')
     ylabel('Temperature')
     title('Overall')
@@ -177,10 +182,11 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
     print(['plot_overall' num2str(HX_slices)],'-dpng','-r0')
     
     
+    
     % ************************ PART IV SOLVER **************************
 	function [x, fval, exitflag] = heateq(k)  % time iteration
 		options = optimset('TolX', 1e-7, 'TolFun', 1e-7, ...
-		    			   'MaxFunEvals', 3000, 'MaxIter', 3000, ...
+		    			   'MaxFunEvals', 1e7, 'MaxIter', 1e7, ...
 		    			   'Display', 'iter');
 
         [h_a_prev, T_w_prev, h_b_prev] = msplit(data, k-1);
@@ -192,10 +198,10 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
             
             % pre-allocate 
    	    	F = zeros(HX_slices, N);
-	    	dUa_dt = zeros(HX_slices, 1);
-	    	dUb_dt = zeros(HX_slices, 1);
-			dHa_dx = zeros(HX_slices, 1);
-			dHb_dx = zeros(HX_slices, 1);
+	    	dua_dt = zeros(HX_slices, 1);
+	    	dub_dt = zeros(HX_slices, 1);
+			dha_dx = zeros(HX_slices, 1);
+			dhb_dx = zeros(HX_slices, 1);
 
             % split solution vector 
 			[h_a, T_w, h_b] = msplit(sol,1);
@@ -208,16 +214,16 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
                         
 			% internal energy deltas 
 			for i = 1 : HX_slices  % slicing loop                
-                dUa_dt(i) = dU_dt(h_a(i), h_a_prev(i), p_a(i), fluid_a);
-                dUb_dt(i) = dU_dt(h_b(i), h_b_prev(i), p_b(i), fluid_b);
+                dua_dt(i) = du_dt(h_a(i), h_a_prev(i), p_a(i), fluid_a);
+                dub_dt(i) = du_dt(h_b(i), h_b_prev(i), p_b(i), fluid_b);
 
             % enthalpy deltas  
     			if i == 1
-					dHa_dx(1) = h_a_in - h_a(1);
-					dHb_dx(HX_slices) = h_b_in - h_b(HX_slices);
+					dha_dx(1) = h_a_in - h_a(1);
+					dhb_dx(HX_slices) = h_b_in - h_b(HX_slices);
 	            else
-    				dHa_dx(i) = h_a(i - 1) - h_a(i);
-    				dHb_dx(HX_slices + 1 - i) = ...
+    				dha_dx(i) = h_a(i - 1) - h_a(i);
+    				dhb_dx(HX_slices + 1 - i) = ...
                         h_b(HX_slices + 2 - i) - h_b(HX_slices + 1 - i);
 	            end
             end
@@ -225,10 +231,12 @@ function [T_a_sol, T_b_sol, T_w_sol] = RN_06_a %With temperature distribution in
             % final equations 
 			for i = 1 : HX_slices % slicing loop  
                 
-				F(i,1) = - dUa_dt(i) * M / t_delta + m * dHa_dx(i) + Q_cond(i,1);
-				F(i,N) = - dUb_dt(i) * M / t_delta + m * dHb_dx(i) + Q_cond(i,N);
+				F(i,1) = - dua_dt(i) * M / t_delta + m * dha_dx(i) + Q_cond(i,1);
+				F(i,N) = - dub_dt(i) * M / t_delta + m * dhb_dx(i) + Q_cond(i,N);
+                F(i,2) = - dTw_dt(i,2) * M_w / t_delta + (Q_cond(i,2) - Q_cond(i,1)) / cp_w(i,2);
+                F(i,N-1) = - dTw_dt(i,N-1) * M_w / t_delta + (Q_cond(i,N-1) - Q_cond(i,N)) / cp_w(i,N-1);
                 
-                for j = 2 : N - 1 % wall temperatures in the middle 
+                for j = 3 : N - 2 % wall temperatures in the middle 
                     F(i,j) = - dTw_dt(i,j) * M_w / t_delta + Q_cond(i,j) / cp_w(i,j) ;
                 end
             end   
