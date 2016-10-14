@@ -311,6 +311,9 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_e
     plot(2 : t + 1, p_b_data(1 : HX_slices, 2 : t + 1)','b')
     xlabel('Time')
     ylabel('Pressure')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print(['plot_p' num2str(HX_slices)],'-dpng','-r0')
     
     % delta_p PLOT
     figure
@@ -320,6 +323,9 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_e
     xlabel('Time')
     ylabel('Pressure Drop')
     title('delta p Plot')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print(['plot_delta_p' num2str(HX_slices)],'-dpng','-r0')
     end
     
     % ************************ PART IV SOLVERS **************************
@@ -411,10 +417,10 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_e
         [~,sol] = ode45(@eqgen,t_span,sol_guess);
 
         % generate equations 
+        % generate equations 
 	    function dTdt_w = eqgen(~,T_w)
             
             % pre-allocate
-   	    	dTdt_w = zeros(Wall_slices, 1);
             dTdx_w = zeros(Wall_slices, 1);
             
             % Calculate K_w and cp
@@ -431,10 +437,9 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_e
                Q_cond(j) = K_w(j)/b_x * dTdx_w(j);
             end
             
-            % Evaluted Cp and generate ODEs        
-            for j = 1 : W             
-               dTdt_w(j) = Q_cond(j)/(M_w * cp_w(j));
-            end
+            % Q_rad & Generate ODEs
+            Q_rad = As * F * sigma * (T_ext.^4 - T_w.^4);
+            dTdt_w = (Q_cond' + Q_rad) ./ (M_w * cp_w);
         end
     end   
 end  % RN_08_e
