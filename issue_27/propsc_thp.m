@@ -1,6 +1,9 @@
-function eval = propsc_thp(h, p, fluid, lib) 
+function eval = propsc_thp(h, p, fluid, ~) 
     
-    [~, length] = size(h);
+    [a, b] = size(h);
+    length = max(a,b); % essentially determines if the input is 
+                       % a column or row vector
+                       
     buffer_size = 1000;
     ierr = 0;
     b = (1:1:buffer_size);
@@ -12,17 +15,17 @@ function eval = propsc_thp(h, p, fluid, lib)
     
     %Selecting backend and fluid
     backend = 'BICUBIC&HEOS';
-    [handle, sh] = calllib('coolprop','AbstractState_factory',backend,fluid,...
+    [handle, ~] = calllib('coolprop','AbstractState_factory',backend,fluid,...
         ierr,herr,buffer_size);
-    [input_pair, sip] = calllib('coolprop','get_input_pair_index','HmassP_INPUTS');
+    [input_pair, ~] = calllib('coolprop','get_input_pair_index','HmassP_INPUTS');
 
     outputs=zeros(5,1);
     %Choosing parameters to compute
-    [outputs(1,1), so1] = calllib('coolprop','get_param_index','T');
-    [outputs(2,1), so2] = calllib('coolprop','get_param_index','Umass');
-    [outputs(3,1), so3] = calllib('coolprop','get_param_index','Hmass');
-    [outputs(4,1), so4] = calllib('coolprop','get_param_index','Smolar');
-    [outputs(5,1), so5] = calllib('coolprop','get_param_index','Dmolar');
+    [outputs(1,1), ~] = calllib('coolprop','get_param_index','T');
+    [outputs(2,1), ~] = calllib('coolprop','get_param_index','Umass');
+    [outputs(3,1), ~] = calllib('coolprop','get_param_index','Hmass');
+    [outputs(4,1), ~] = calllib('coolprop','get_param_index','Smolar');
+    [outputs(5,1), ~] = calllib('coolprop','get_param_index','Dmolar');
     
     %Creating ouput pointers
     out1Ptr = libpointer('doublePtr',zeros(length,1));
@@ -32,7 +35,8 @@ function eval = propsc_thp(h, p, fluid, lib)
     out5Ptr = libpointer('doublePtr',zeros(length,1));
     
     calllib('coolprop','AbstractState_update_and_5_out',handle,input_pair,...
-        input1Ptr,input2Ptr,length,outputs,out1Ptr,out2Ptr,out3Ptr,out4Ptr,out5Ptr,...
+        input1Ptr,input2Ptr,length,outputs,...
+        out1Ptr,out2Ptr,out3Ptr,out4Ptr,out5Ptr,...
         ierr,herr,buffer_size);
 
     %Saving computed values to array
@@ -41,6 +45,9 @@ function eval = propsc_thp(h, p, fluid, lib)
     out3=get(out3Ptr,'Value');
     out4=get(out4Ptr,'Value');
     out5=get(out5Ptr,'Value');
+    
+    clear out1Ptr out2Ptr out3Ptr out4Ptr out5Ptr
+    clear input1Ptr input2Ptr
 
     eval=out1';
 end
