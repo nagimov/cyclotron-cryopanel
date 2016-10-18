@@ -1,6 +1,6 @@
-function eval = propsc_thp(h, p, fluid, ~) 
+function eval = propsc_htp(T, p, fluid, ~) 
     
-    [a, b] = size(h);
+    [a, b] = size(T);
     length = max(a,b); % essentially determines if the input is 
                        % a column or row vector
                        
@@ -10,19 +10,19 @@ function eval = propsc_thp(h, p, fluid, ~)
     herr = char(b);
     
     %creating input pointers
-    input1Ptr = libpointer('doublePtr',h);
-    input2Ptr = libpointer('doublePtr',p);
+    input1Ptr = libpointer('doublePtr',p);
+    input2Ptr = libpointer('doublePtr',T);
     
     %Selecting backend and fluid
     backend = 'BICUBIC&HEOS';
     [handle, ~] = calllib('coolprop','AbstractState_factory',backend,fluid,...
         ierr,herr,buffer_size);
-    [input_pair, ~] = calllib('coolprop','get_input_pair_index','HmassP_INPUTS');
+    [input_pair, ~] = calllib('coolprop','get_input_pair_index','PT_INPUTS');
 
     outputs=zeros(5,1);
     %Choosing parameters to compute
-    [outputs(1,1), ~] = calllib('coolprop','get_param_index','T');
-    [outputs(2,1), ~] = calllib('coolprop','get_param_index','Umass');
+    [outputs(1,1), ~] = calllib('coolprop','get_param_index','Dmolar');
+    [outputs(2,1), ~] = calllib('coolprop','get_param_index','Prandtl');
     [outputs(3,1), ~] = calllib('coolprop','get_param_index','Hmass');
     [outputs(4,1), ~] = calllib('coolprop','get_param_index','Smolar');
     [outputs(5,1), ~] = calllib('coolprop','get_param_index','Dmolar');
@@ -49,5 +49,5 @@ function eval = propsc_thp(h, p, fluid, ~)
     clear out1Ptr out2Ptr out3Ptr out4Ptr out5Ptr
     clear input1Ptr input2Ptr
 
-    eval=out1';
+    eval = out3';
 end
