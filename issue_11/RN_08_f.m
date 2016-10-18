@@ -47,11 +47,11 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
     % INITIAL DATA
     p_atm = 101325; % define atmospheric pressure to be used as a reference, Pa 
     fluid_a = 'helium';  % stream A fluid name
-    p_a_in = 1.75 * p_atm;  % inlet pressure of stream A, Pa
+    p_a_in = 1 * p_atm;  % inlet pressure of stream A, Pa
     T_a_in = 100;  % inlet temperature of stream A, K
     h_a_in = prop_htp(T_a_in, p_a_in, fluid_a, lib);  % inlet enthalpy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
-    p_b_in = 1.25 * p_atm;  % inlet pressure of stream B, Pa
+    p_b_in = 1 * p_atm;  % inlet pressure of stream B, Pa
     T_b_in = 200;  % inlet temperature of stream B, K
     h_b_in = prop_htp(T_b_in, p_b_in, fluid_b, lib);  % inlet enthalpy of stream B, J/kg
     T_w_init = 150;  % initial wall temperature, K
@@ -63,16 +63,16 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
     p_nom = p_atm; % nomial pressure, Pa
     HX_UA_nom_data = {'nitrogen', 3000; ...
                         'helium', 3000}; % nomial HX coefficient, W/K
-    delta_p_nom_data = {'helium', p_atm / 3; ... 
-                        'nitrogen', p_atm / 3 }; % nomial pressure drop, Pa
+    delta_p_nom_data = {'helium', p_atm / 10; ... 
+                        'nitrogen', p_atm / 10 }; % nomial pressure drop, Pa
     nom_values = {'helium', nom_calc(fluid_a);...
                    'nitrogen', nom_calc(fluid_b)}; % calculate other nominal values
     
     % INITIAL CONDITIONS TIMES LENGTH OF HX
     h_a_0 = h_a_in * ones(HX_slices, 1);
     h_b_0 = h_b_in * ones(HX_slices, 1);
-    p_a_0 = p_a_in * ones(HX_slices, 1);
-    p_b_0 = p_b_in * ones(HX_slices, 1);
+    p_a_0 = p_dist(delta_p_nom_data{1,2}, p_a_in);
+    p_b_0 = p_dist(delta_p_nom_data{2,2}, p_b_in);
     T_ext = T_ext_init * ones(HX_slices, 1); 
     T_w_0 = T_w_init * ones(HX_slices, Wall_slices);
 	    
@@ -84,8 +84,8 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
     % k are the time steps 
     
     % INTIAL CONDITIONS FOR p
-    p_a_data(:, 1) = [p_a_0; delta_p_nom];
-    p_b_data(:, 1) = [p_b_0; delta_p_nom];
+    p_a_data(:, 1) = p_a_0;
+    p_b_data(:, 1) = p_b_0; 
     % rows the HX_slices
     % last row is the delta_p
     % columns the time steps 
@@ -154,7 +154,6 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
         % grab nomimal values and calculate current values 
         f = strcmp(fluid, nom_values);           
         HX_UA_nom = nom_values{f, 2}(1);
-        delta_p_nom = nom_values{f, 2}(2);
         L_nom = nom_values{f, 2}(3);
         mu_nom = nom_values{f, 2}(4);
         Pr_nom = nom_values{f, 2}(6);
@@ -190,26 +189,29 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
 		dudt = propsc_uhp(h, p, fluid, lib) - propsc_uhp(h_prev, p, fluid, lib);
     end
 
-    % FUNCTION THAT CALCULATES P DIST 
-    function p = p_calc(h, p, p_in, fluid)
+    % FUNCTION THAT CALCULATES delta_p
+    function delta_p = p_calc(h, p, fluid)
                
         % grab nomimal vlaues and calculate current values 
-        f = strcmp(fluid, nom_values);           
+        f = strcmp(fluid, nom_values);
+        delta_p_nom = nom_values{f, 2}(2);
         mu_nom = nom_values{f, 2}(4);
         rho_nom = nom_values{f, 2}(5);
         h_mean = mean(h);
         p_mean = mean(p(1:HX_slices));
-        [~,mu,rho,~] = propsc_LmurhoPr_hp(h_mean, p_atm, fluid, lib);
+        [~,mu,rho,~] = propsc_LmurhoPr_hp(h_mean, p_mean, fluid, lib);
                
         % calculate delta_p
         delta_p = delta_p_nom * (m / m_nom)^1.8 * (mu / mu_nom)^0.2 ...
             * (rho_nom / rho);
-        
-        % get a linear distribution of p 
-        delta_p = delta_p / HX_slices; % delta_p per slice 
-        p = p_in - delta_p * 1 : -delta_p : p_in - delta_p * HX_slices;
-        p = [p, delta_p * HX_slices]; 
     end 
+
+    % FUNCTION THAT CALCULATES p_dist 
+    function p_dist = p_dist(delta_p, p_in)
+        delta_p = delta_p / HX_slices; % delta_p per slice 
+        p = p_in : -delta_p : p_in - delta_p * (HX_slices - 1);
+        p_dist = [p, delta_p * HX_slices]; 
+    end
 
     % FUNCTION THAT CONVERTS h,T to Q
     function [T_a_sol, T_b_sol, T_w_sol, Q] = TQ_calc(data)
@@ -313,10 +315,10 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
     figure
     hold on 
     plot(2 : t + 1, p_atm * ones(1,t),'k')
-    plot(2 : t + 1, p_a_data( 1, 2 : t + 1)','r:')   
-    plot(2 : t + 1, p_b_data( 1, 2 : t + 1)','b:')
-    plot(2 : t + 1, p_a_data( 1:HX_slices, 2 : t + 1)','r')   
-    plot(2 : t + 1, p_b_data( 1:HX_slices, 2 : t + 1)','b')
+    plot(2 : t + 1, p_a_data( 1, 2 : t + 1)','r')   
+    plot(2 : t + 1, p_b_data( 1, 2 : t + 1)','b')
+    plot(2 : t + 1, p_a_data( HX_slices, 2 : t + 1)','r:')   
+    plot(2 : t + 1, p_b_data( HX_slices, 2 : t + 1)','b:')
     xlabel('Time')
     ylabel('Pressure')
     fig = gcf;
@@ -341,8 +343,9 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
         [h_a_prev, ~, h_b_prev] = msplit(data, k-1);
         p_a_prev = p_a_data(:, k-1);
         p_b_prev = p_b_data(:, k-1);
-        sol = [p_calc(h_a_prev, p_a_prev, p_a_in, fluid_a)',...
-            p_calc(h_b_prev, p_b_prev, p_b_in, fluid_b)'];
+        delta_p_a = p_calc(h_a_prev, p_a_prev, fluid_a);
+        delta_p_b = p_calc(h_b_prev, p_b_prev, fluid_b);
+        sol = [p_dist(delta_p_a, p_a_in)', p_dist(delta_p_b, p_b_in)'];
     end
     
     function [x, fval, exitflag] = solve_h(k)  % h solver
