@@ -167,21 +167,21 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f
 
     % FUNCTION THAT CALCULATES Q_cond 
     function Q_cond = Q_cond(h, p, T_w, fluid)
-        T = propsc_thp(h, p, fluid, lib)';
+        T = propsc_thp(h, p, fluid, lib);
         T_delta = T_w - T;
         Q_cond = HX_UA(h, p, fluid) / HX_slices .* T_delta;
     end 
 
     % FUNCTION THAT CALCULATES Q_rad (between two streams)
     function Q_rad = Q_rad1(h_a, h_b, p_a, p_b)
-        T_a = propsc_thp(h_a, p_a, fluid_a, lib)';
-        T_b = propsc_thp(h_b, p_b, fluid_b, lib)';
+        T_a = propsc_thp(h_a, p_a, fluid_a, lib);
+        T_b = propsc_thp(h_b, p_b, fluid_b, lib);
         Q_rad = As * F * sigma * (T_b.^4 - T_a.^4);
     end
 
     % FUNCTION THAT CALCULATES Q_rad (between streams and an exterior) 
     function Q_rad = Q_rad2(h, p, fluid)
-        T = propsc_thp(h, p, fluid, lib)';
+        T = propsc_thp(h, p, fluid, lib);
         Q_rad = As * F * sigma * (T_ext.^4 - T.^4);
     end
 
