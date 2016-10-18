@@ -1,27 +1,27 @@
-function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f 
+function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, Q] = RN_08_f 
     %With radiative heat transfer, k_x, U, delta_p -- to clean up & test code
     clc; clear;
     close all;
     tic
     
     % ************************** COOL PROP ********************************
+    CP_dump = 20; % number of time steps before we dump & re-load the library 
     path_to_lib = 'D:\CoolProp_wrapper_fast'; %specify path to coolprop shared library
     path_to_include= 'D:\CoolProp_wrapper_fast'; %specify path to coolprop's include folder
     libname = 'libCoolProp'; % OSX and linux
         if ispc
             libname = 'CoolProp';
         end
-    CP_dump = 20; % number of time steps before we dump & re-load the library 
+    addpath(path_to_lib)
+    addpath(path_to_include)
     loadcoolprop; 
        
     % Loading shared library
     function loadcoolprop 
-    if ~libisloaded('coolprop') %checking whether library is already loaded
-        addpath(path_to_lib)
-        addpath(path_to_include)
-        loadlibrary(libname,'CoolPropLib.h','includepath',...
-            path_to_include,'alias','coolprop'); % loading library with alias coolprop
-    end
+        if ~libisloaded('coolprop') %checking whether library is already loaded
+            loadlibrary(libname,'CoolPropLib.h','includepath',...
+                path_to_include,'alias','coolprop'); % loading library with alias coolprop
+        end
     end
     
     % ************************ PART I DATA ********************************
@@ -47,11 +47,11 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
     % INITIAL DATA
     p_atm = 101325; % define atmospheric pressure to be used as a reference, Pa 
     fluid_a = 'helium';  % stream A fluid name
-    p_a_in = 1.25 * p_atm;  % inlet pressure of stream A, Pa
+    p_a_in = 1.75 * p_atm;  % inlet pressure of stream A, Pa
     T_a_in = 100;  % inlet temperature of stream A, K
     h_a_in = prop_htp(T_a_in, p_a_in, fluid_a, lib);  % inlet enthalpy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
-    p_b_in = 1.75 * p_atm;  % inlet pressure of stream B, Pa
+    p_b_in = 1.25 * p_atm;  % inlet pressure of stream B, Pa
     T_b_in = 200;  % inlet temperature of stream B, K
     h_b_in = prop_htp(T_b_in, p_b_in, fluid_b, lib);  % inlet enthalpy of stream B, J/kg
     T_w_init = 150;  % initial wall temperature, K
@@ -63,8 +63,8 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
     p_nom = p_atm; % nomial pressure, Pa
     HX_UA_nom_data = {'nitrogen', 3000; ...
                         'helium', 3000}; % nomial HX coefficient, W/K
-    delta_p_nom_data = {'helium', p_atm / 2; ... 
-                        'nitrogen', p_atm / 2 }; % nomial pressure drop, Pa
+    delta_p_nom_data = {'helium', p_atm / 3; ... 
+                        'nitrogen', p_atm / 3 }; % nomial pressure drop, Pa
     nom_values = {'helium', nom_calc(fluid_a);...
                    'nitrogen', nom_calc(fluid_b)}; % calculate other nominal values
     
@@ -158,7 +158,7 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
         L_nom = nom_values{f, 2}(3);
         mu_nom = nom_values{f, 2}(4);
         Pr_nom = nom_values{f, 2}(6);
-        [L,mu,~,Pr] = propsc_LmurhoPr_hp(h, p', fluid, lib);
+        [L,mu,~,Pr] = propsc_LmurhoPr_hp(h, p, fluid, lib);
         
         % scale HX_UA
         value = HX_UA_nom * (L / L_nom) .* (m / m_nom).^.8 .*...
@@ -199,10 +199,10 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
         rho_nom = nom_values{f, 2}(5);
         h_mean = mean(h);
         p_mean = mean(p(1:HX_slices));
-        [~,mu,rho,~] = propsc_LmurhoPr_hp(h_mean, p_mean, fluid, lib);
+        [~,mu,rho,~] = propsc_LmurhoPr_hp(h_mean, p_atm, fluid, lib);
                
         % calculate delta_p
-        delta_p = delta_p_nom * (m / m_nom)^1.8 * (mu_nom / mu)^(-0.2) ...
+        delta_p = delta_p_nom * (m / m_nom)^1.8 * (mu / mu_nom)^0.2 ...
             * (rho_nom / rho);
         
         % get a linear distribution of p 
@@ -218,13 +218,13 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
         T_b_sol = zeros(HX_slices, t + 1);
         
         for k = 1 : t + 1
-            Q(:,1,k) = Q_rad1(data(:, 1, k)', data(:, N, k)', p_a_0, p_b_0); % Q_rad_ab
-            Q(:,2,k) = Q_rad2(data(:, 1, k)', p_a_0, fluid_a); % Q_rad_ae
-            Q(:,3,k) = Q_rad2(data(:, N, k)', p_b_0, fluid_b); % Q_rad_be
-            Q(:,4,k) = Q_cond(data(:, 1, k)', p_a_0, data(:, 2, k), fluid_a); % Q_cond_aw
-            Q(:,5,k) = Q_cond(data(:, N, k)', p_b_0, data(:, N-1, k), fluid_b); % Q_cond_bw
-            T_a_sol(:,k) = propsc_thp(data(:,1,k)', p_a_0, fluid_a, lib);  % T for j = 1
-            T_b_sol(:,k) = propsc_thp(data(:,N,k)', p_b_0, fluid_b, lib);  % T for j = N
+            Q(:,1,k) = Q_rad1(data(:, 1, k), data(:, N, k), p_a_0, p_b_0); % Q_rad_ab
+            Q(:,2,k) = Q_rad2(data(:, 1, k), p_a_0, fluid_a); % Q_rad_ae
+            Q(:,3,k) = Q_rad2(data(:, N, k), p_b_0, fluid_b); % Q_rad_be
+            Q(:,4,k) = Q_cond(data(:, 1, k), p_a_0, data(:, 2, k), fluid_a); % Q_cond_aw
+            Q(:,5,k) = Q_cond(data(:, N, k), p_b_0, data(:, N-1, k), fluid_b); % Q_cond_bw
+            T_a_sol(:,k) = propsc_thp(data(:,1,k), p_a_0, fluid_a, lib);  % T for j = 1
+            T_b_sol(:,k) = propsc_thp(data(:,N,k), p_b_0, fluid_b, lib);  % T for j = N
         end
         
         T_w_sol = data(:, 2 : N - 1, :); % for j NOT than 1 or N 
@@ -312,8 +312,11 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
     % p vs time PLOT
     figure
     hold on 
-    plot(2 : t + 1, p_a_data(1 : HX_slices, 2 : t + 1)','r')   
-    plot(2 : t + 1, p_b_data(1 : HX_slices, 2 : t + 1)','b')
+    plot(2 : t + 1, p_atm * ones(1,t),'k')
+    plot(2 : t + 1, p_a_data( 1, 2 : t + 1)','r:')   
+    plot(2 : t + 1, p_b_data( 1, 2 : t + 1)','b:')
+    plot(2 : t + 1, p_a_data( 1:HX_slices, 2 : t + 1)','r')   
+    plot(2 : t + 1, p_b_data( 1:HX_slices, 2 : t + 1)','b')
     xlabel('Time')
     ylabel('Pressure')
     fig = gcf;
@@ -356,21 +359,24 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
 
         % compute difference between the equation and zero
 	    function F = eqgen(sol)
+            
             % pre-allocate 
-			dhdx_a = zeros(1, HX_slices);
-			dhdx_b = zeros(1, HX_slices);
+			dhdx_a = zeros(HX_slices, 1);
+			dhdx_b = zeros(HX_slices, 1);
             
             % split solution vector 
-			h_a = sol(1 : 1 * HX_slices);
-			h_b = sol(1 * HX_slices + 1 : 2 * HX_slices);
-            p_a = p_a_data(1 : HX_slices, k);
-            p_b = p_b_data(1 : HX_slices, k);
+			h_a = sol(:, 1);
+			h_b = sol(:, 2);
+            
+            % get p and T_w data             
             T_w_a = T_w_prev(:, 1);
             T_w_b = T_w_prev(:, Wall_slices);
+            p_a = p_a_data(1 : HX_slices, k);
+            p_b = p_b_data(1 : HX_slices, k);
             
             % dudt
-            dudt_a = dudt(h_a, h_a_prev', p_a, fluid_a);
-            dudt_b = dudt(h_b, h_b_prev', p_b, fluid_b);
+            dudt_a = dudt(h_a, h_a_prev, p_a, fluid_a);
+            dudt_b = dudt(h_b, h_b_prev, p_b, fluid_b);
             
             % Q_cond
             Q_cond_aw = Q_cond(h_a, p_a, T_w_a, fluid_a);
@@ -378,7 +384,7 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
             
             % Q_rad
             Q_rad_ab = Q_rad1(h_a, h_b, p_a, p_b);
-            Q_rad_ba = - Q_rad_ab; 
+            Q_rad_ba = - Q_rad_ab;
             Q_rad_ae = Q_rad2(h_a, p_a, fluid_a);
             Q_rad_be = Q_rad2(h_b, p_b, fluid_b);
             
@@ -394,9 +400,9 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
             end
                        
             % final equations 
-			F_a = - dudt_a' * M / t_delta + m * dhdx_a' ...
+			F_a = - dudt_a * M / t_delta + m * dhdx_a ...
                     + Q_cond_aw + Q_rad_ab + Q_rad_ae;
-			F_b = - dudt_b' * M / t_delta + m * dhdx_b' ...
+			F_b = - dudt_b * M / t_delta + m * dhdx_b ...
                     + Q_cond_bw + Q_rad_ba + Q_rad_be;
             
 			% combine final exit vector
@@ -404,48 +410,46 @@ function [Q, data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol] = RN_08_f
 		end
     end
 
-	function sol = solve_T(i,k)  % T solver                         
+	function sol = solve_T(i,k)  % T solver, for a fixed HX_slice                          
         
         % get data 
         W = Wall_slices; % short hand notation 
-        [~, T_w_prev, ~] = msplit(data, k-1); 
+        [~, T_w_prev, ~] = msplit(data, k-1);
         [h_a, ~, h_b] = msplit(data, k);
-        p_a = p_a_0;
-        p_b = p_b_0;
-        
+        p_a = p_a_data(1 : HX_slices, k);
+        p_b = p_b_data(1 : HX_slices, k);
+               
         % calculate Q from h 
         Q_cond_aw = Q_cond(h_a(i), p_a(i), T_w_prev(i,1), fluid_a);   
         Q_cond_bw = Q_cond(h_b(i), p_b(i), T_w_prev(i,W), fluid_b);       
  
         % launch ode45 
-        sol_guess = T_w_prev(i,:)';
+        sol_guess = T_w_prev(i, :)';
         t_span = [k * t_delta, (k + 1) * t_delta];
-        [~,sol] = ode45(@eqgen,t_span,sol_guess);
+        [~,sol] = ode45(@eqgen, t_span, sol_guess);
 
-        % generate equations 
         % generate equations 
 	    function dTdt_w = eqgen(~,T_w)
             
-            % pre-allocate
+            % ensure we have column vectors 
             dTdx_w = zeros(Wall_slices, 1);
+            Q_cond = zeros(Wall_slices, 1); 
             
             % Calculate K_w and cp
             K_w = K(T_w);
-            cp_w = cp(T_w); 
+            cp_w = cp(T_w);
                  
             % Q_cond AT WALL EDGES 
-            Q_cond(1) =  K_w(1)/b_x * (T_w(1+1) - T_w(1)) - Q_cond_aw;
+            Q_cond(1) =  K_w(1)/b_x * (T_w(2) - T_w(1)) - Q_cond_aw;
             Q_cond(W) =  K_w(W)/b_x * (T_w(W) - T_w(W-1)) - Q_cond_bw;
                                     
             % Q_cond IN THE WALL
-            for j = 2 : W - 1
-               dTdx_w(j) = T_w(j+1) + T_w(j-1) - 2 * T_w(j);
-               Q_cond(j) = K_w(j)/b_x * dTdx_w(j);
-            end
+            dTdx_w(2 : W-1) = T_w(3 : W) + T_w(1 : W-2) - 2 * T_w(2 : W-1);
+            Q_cond(2 : W-1) = K_w(2 : W-1) / b_x .* dTdx_w(2 : W-1);
             
             % Q_rad & Generate ODEs
             Q_rad = As * F * sigma * (T_ext.^4 - T_w.^4);
-            dTdt_w = (Q_cond' + Q_rad) ./ (M_w * cp_w);
+            dTdt_w = (Q_cond + Q_rad) ./ (M_w * cp_w);
         end
     end   
 end  % RN_08_f
