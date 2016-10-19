@@ -46,7 +46,7 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     
     % RADIATION HEAT TRANSFER
     sigma = 5.676e-8; % Stefan-Boltzmann constant, W/m^2 * K^4
-    As = 20; % surface area that is "seen" in radiation heat transfer, m^2
+    As = 1; % surface area that is "seen" in radiation heat transfer, m^2
     F = 1; % view factor 
                 
     % INITIAL DATA
