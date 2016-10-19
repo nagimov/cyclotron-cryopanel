@@ -1,5 +1,6 @@
 function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = RN_09_b 
-    %Flux test
+    % Wall tail - with moving node
+    % For low T, use HX_UA = 1500 and a factor of 100 for K, p_atm/3
     clc; clear;
     close all;
     tic
@@ -64,11 +65,11 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
     % INITIAL DATA
     p_atm = 101325; % define atmospheric pressure to be used as a reference, Pa 
     fluid_a = 'helium';  % stream A fluid name
-    p_a_in = 1.5 * p_atm;  % inlet pressure of stream A, Pa
+    p_a_in = 1 * p_atm;  % inlet pressure of stream A, Pa
     T_a_in = 100;  % inlet temperature of stream A, K
     h_a_in = prop_htp(T_a_in, p_a_in, fluid_a, lib);  % inlet enthalpy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
-    p_b_in = 1.25 * p_atm;  % inlet pressure of stream B, Pa
+    p_b_in = 1 * p_atm;  % inlet pressure of stream B, Pa
     T_b_in = 200;  % inlet temperature of stream B, K
     h_b_in = prop_htp(T_b_in, p_b_in, fluid_b, lib);  % inlet enthalpy of stream B, J/kg
     T_w_init = 150;  % initial wall temperature, K
