@@ -7,10 +7,10 @@
 
 ...
 
-5. *RN_07_e.m* under *issue_25* is the first model that uses C wrappers, no radiative heat transfer 
-6. *RN_08_a.m* under *issue_28* is the model with basic radiative heat transfer --- not updated!!! 
+5. *RN_07_e.m* under *issue_27* is the first model that uses C wrappers, no radiative heat transfer 
 7. *RN_08_a2.m* under *issue_28* is the model with basic radiative heat transfer + wall-ext radiative heat transfer 
-8. *RN_08_c.m* under *issue_30* is the model that computes K,U dynamically --- not updated!! 
+8. *RN_08_c.m* under *issue_30* is the model that computes U dynamically
+8. *RN_08_f.m* under *issue_11* is the model with pressure drop 
 9. *RN_09_b.m* under *issue_31* is the model with "wall tail" 
 
 Issue_30 contains K.m, cp.m and the new coolprop wrapper propsc_LmurhoPr_hp.m 
