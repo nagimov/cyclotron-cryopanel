@@ -77,12 +77,12 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     for k = 2 : t + 1 
         % h SOLVER
         [sol, fval, exitflag] = solve_h(k);
-		disp(['Time step completed ' num2str(k-1) 'h'...
+		disp(['Time step completed ' num2str(k-1) ...
             ' Time ' num2str(toc/60) ' min '...
             ' Fval ' num2str(sum(fval)) ...
             ' Exit Flag ' num2str(exitflag)])
-        data(:, 1, k) = sol(1 : 1 * HX_slices ); % stack 2-d to 3-d (stream A)
-        data(:, N, k) = sol(1 * HX_slices + 1 : 2 * HX_slices ); % stack 2-d to 3-d (stream B)
+        data(:, 1, k) = sol(:, 1); % stack 2-d to 3-d (stream A)
+        data(:, N, k) = sol(:, 2); % stack 2-d to 3-d (stream B)
         
         % T SOLVER
         for i = 1 : HX_slices
@@ -122,21 +122,21 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
 
     % FUNCTION THAT CALCULATES Q_cond 
     function Q_cond = Q_cond(h, p, T_w, fluid)
-        T = propsc_thp(h, p, fluid, lib)';
+        T = propsc_thp(h, p, fluid, lib);
         T_delta = T_w - T;
         Q_cond = HX_UA(fluid) / HX_slices * T_delta;
     end 
 
     % FUNCTION THAT CALCULATES Q_rad (between two streams)
     function Q_rad = Q_rad1(h_a, h_b, p_a, p_b)
-        T_a = propsc_thp(h_a, p_a, fluid_a, lib)';
-        T_b = propsc_thp(h_b, p_b, fluid_b, lib)';
+        T_a = propsc_thp(h_a, p_a, fluid_a, lib);
+        T_b = propsc_thp(h_b, p_b, fluid_b, lib);
         Q_rad = As * F * sigma * (T_b.^4 - T_a.^4);
     end
 
     % FUNCTION THAT CALCULATES Q_rad (between streams and an exterior) 
     function Q_rad = Q_rad2(h, p, fluid)
-        T = propsc_thp(h, p, fluid, lib)';
+        T = propsc_thp(h, p, fluid, lib);
         Q_rad = As * F * sigma * (T_ext.^4 - T.^4);
     end
 
@@ -152,13 +152,13 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
         T_b_sol = zeros(HX_slices, t + 1);
         
         for k = 1 : t + 1
-            Q(:,1,k) = Q_rad1(data(:, 1, k)', data(:, N, k)', p_a_0, p_b_0); % Q_rad_ab
-            Q(:,2,k) = Q_rad2(data(:, 1, k)', p_a_0, fluid_a); % Q_rad_ae
-            Q(:,3,k) = Q_rad2(data(:, N, k)', p_b_0, fluid_b); % Q_rad_be
-            Q(:,4,k) = Q_cond(data(:, 1, k)', p_a_0, data(:, 2, k), fluid_a); % Q_cond_aw
-            Q(:,5,k) = Q_cond(data(:, N, k)', p_b_0, data(:, N-1, k), fluid_b); % Q_cond_bw
-            T_a_sol(:,k) = propsc_thp(data(:,1,k)', p_a_0, fluid_a, lib);  % j = 1
-            T_b_sol(:,k) = propsc_thp(data(:,N,k)', p_b_0, fluid_b, lib);  % j = N
+            Q(:, 1, k) = Q_rad1(data(:, 1, k), data(:, N, k), p_a_0, p_b_0); % Q_rad_ab
+            Q(:, 2, k) = Q_rad2(data(:, 1, k), p_a_0, fluid_a); % Q_rad_ae
+            Q(:, 3, k) = Q_rad2(data(:, N, k), p_b_0, fluid_b); % Q_rad_be
+            Q(:, 4, k) = Q_cond(data(:, 1, k), p_a_0, data(:, 2, k), fluid_a); % Q_cond_aw
+            Q(:, 5, k) = Q_cond(data(:, N, k), p_b_0, data(:, N-1, k), fluid_b); % Q_cond_bw
+            T_a_sol(:, k) = propsc_thp(data(:, 1, k), p_a_0, fluid_a, lib);  % j = 1
+            T_b_sol(:, k) = propsc_thp(data(:, N, k), p_b_0, fluid_b, lib);  % j = N
         end
         
         T_w_sol = data(:, 2 : N - 1, :); % for j NOT than 1 or N 
@@ -167,7 +167,7 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     % ************************ PART III PLOTS ***************************
     function plots 
     % HE PLOT 
-    plot(1:HX_slices, T_a_sol, 'r')
+    plot(1 : HX_slices, T_a_sol, 'r')
     xlabel('Slices')
     ylabel('Temperature')
     title('He')
@@ -177,7 +177,7 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     
     % N2 PLOT
     figure
-    plot(1:HX_slices, T_b_sol, 'b')
+    plot(1 : HX_slices, T_b_sol, 'b')
     xlabel('Slices')
     ylabel('Temperature')
     title('N_2')
@@ -188,11 +188,11 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     % OVERALL PLOT
     figure 
     hold on 
-    plot(1:HX_slices, T_a_sol, 'k')
-    plot(1:HX_slices, T_b_sol, 'r')
-    plot(1:HX_slices, squeeze(T_w_sol(:, 1, :)), 'b')
-    plot(1:HX_slices, squeeze(T_w_sol(:, Wall_slices/2, :)), 'g')
-    plot(1:HX_slices, squeeze(T_w_sol(:, Wall_slices, :)), 'm')
+    plot(1 : HX_slices, T_a_sol, 'k')
+    plot(1 : HX_slices, T_b_sol, 'r')
+    plot(1 : HX_slices, squeeze(T_w_sol(:, 1, :)), 'b')
+    plot(1 : HX_slices, squeeze(T_w_sol(:, Wall_slices/2, :)), 'g')
+    plot(1 : HX_slices, squeeze(T_w_sol(:, Wall_slices, :)), 'm')
     xlabel('Slices')
     ylabel('Temperature')
     title('Overall')
@@ -203,11 +203,11 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     % Q OVERALL PLOT
     figure
     hold on
-    plot(1:HX_slices, squeeze(Q(:,1,:)), 'g') % Q_rad_ab
-    plot(1:HX_slices, squeeze(Q(:,2,:)), 'm') % Q_rad_ae
-    plot(1:HX_slices, squeeze(Q(:,3,:)), 'k') % Q_rad_be
-    plot(1:HX_slices, squeeze(Q(:,4,:)), 'r') % Q_cond_aw  
-    plot(1:HX_slices, squeeze(Q(:,5,:)), 'b') % Q_cond_bw
+    plot(1 : HX_slices, squeeze(Q(:, 1, :)), 'g') % Q_rad_ab
+    plot(1 : HX_slices, squeeze(Q(:, 2, :)), 'm') % Q_rad_ae
+    plot(1 : HX_slices, squeeze(Q(:, 3, :)), 'k') % Q_rad_be
+    plot(1 : HX_slices, squeeze(Q(:, 4, :)), 'r') % Q_cond_aw  
+    plot(1 : HX_slices, squeeze(Q(:, 5, :)), 'b') % Q_cond_bw
     xlabel('Slices')
     ylabel('Heat')
     title('Q Plot')
@@ -215,9 +215,8 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     % Q ZOOMED IN PLOT
     figure
     hold on
-    %plot(1:HX_slices, squeeze(Q(:,1,:)), 'g') % Q_rad_ab
-    plot(1:HX_slices, squeeze(Q(:,2,:)), 'm') % Q_rad_ae
-    plot(1:HX_slices, squeeze(Q(:,3,:)), 'k') % Q_rad_be
+    plot(1 : HX_slices, squeeze(Q(:, 2, :)), 'm') % Q_rad_ae
+    plot(1 : HX_slices, squeeze(Q(:, 3, :)), 'k') % Q_rad_be
     xlabel('Slices')
     ylabel('Heat')
     title('Q Plot')
@@ -233,8 +232,8 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     
     % 3D PLOT
     figure 
-    [X,Y] = meshgrid(1:HX_slices,1:N);
-    time = [1+1, round(t/2), round(3*t/4), t+1]; % which time to plot
+    [X,Y] = meshgrid(1 : HX_slices, 1 : N);
+    time = [2, round(t/2), round(3 * t/4), t + 1]; % which time to plot
     colormap autumn 
     
     for I = 1:4 %4 sub-plots 
@@ -268,28 +267,25 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
         % compute difference between the equation and zero
 	    function F = eqgen(sol)
             % pre-allocate 
-	    	F_a = zeros(1, HX_slices);
-	    	F_b = zeros(1, HX_slices);
-			dhdx_a = zeros(1, HX_slices);
-			dhdx_b = zeros(1, HX_slices);
-
+			dhdx_a = zeros(HX_slices, 1);
+			dhdx_b = zeros(HX_slices, 1);
             
             % split solution vector 
-			h_a = sol(1 : 1 * HX_slices);
-			h_b = sol(1 * HX_slices + 1 : 2 * HX_slices);
+			h_a = sol(:, 1);
+			h_b = sol(:, 2);
             p_a = p_a_0;
             p_b = p_b_0;
             T_w_a = T_w_prev(:, 1);
             T_w_b = T_w_prev(:, Wall_slices);
 
-            dudt_a = dudt(h_a, h_a_prev', p_a, fluid_a);
-            dudt_b = dudt(h_b, h_b_prev', p_b, fluid_b);
+            dudt_a = dudt(h_a, h_a_prev, p_a, fluid_a);
+            dudt_b = dudt(h_b, h_b_prev, p_b, fluid_b);
             Q_cond_aw = Q_cond(h_a, p_a, T_w_a, fluid_a);
             Q_cond_bw = Q_cond(h_b, p_b, T_w_b, fluid_b);
-            Q_rad_ab = Q_rad1(h_a,h_b,p_a,p_b);
+            Q_rad_ab = Q_rad1(h_a, h_b, p_a, p_b);
             Q_rad_ba = - Q_rad_ab; 
-            Q_rad_ae = Q_rad2(h_a,p_a,fluid_a);
-            Q_rad_be = Q_rad2(h_b,p_b,fluid_b);
+            Q_rad_ae = Q_rad2(h_a, p_a, fluid_a);
+            Q_rad_be = Q_rad2(h_b, p_b, fluid_b);
             
 			% enthalpy deltas
 			for i = 1 : HX_slices  % slicing loop                
@@ -298,17 +294,16 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
 					dhdx_b(HX_slices) = h_b_in - h_b(HX_slices);
 	            else
     				dhdx_a(i) = h_a(i - 1) - h_a(i);
-    				dhdx_b(HX_slices + 1 - i) = h_b(HX_slices + 2 - i) - h_b(HX_slices + 1 - i);
+    				dhdx_b(HX_slices + 1 - i) = h_b(HX_slices + 2 - i) ...
+                        - h_b(HX_slices + 1 - i);
 	            end
             end
             
             % final equations 
-			for i = 1 : HX_slices
-				F_a(i) = - dudt_a(i) * M / t_delta + m * dhdx_a(i) ...
-                    + Q_cond_aw(i) + Q_rad_ab(i) + Q_rad_ae(i);
-				F_b(i) = - dudt_b(i) * M / t_delta + m * dhdx_b(i) ...
-                    + Q_cond_bw(i) + Q_rad_ba(i) + Q_rad_be(i);
-            end
+			F_a = - dudt_a * M / t_delta + m * dhdx_a ...
+                    + Q_cond_aw + Q_rad_ab + Q_rad_ae;
+			F_b = - dudt_b * M / t_delta + m * dhdx_b ...
+                    + Q_cond_bw + Q_rad_ba + Q_rad_be;
             
 			% combine final exit vector
 			F = [F_a  F_b];
@@ -330,31 +325,31 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
  
         % launch ode45 
         sol_guess = T_w_prev(i,:)';
-        t_span = [k * t_delta, (k + 1) * t_delta];
+        t_span = [0, t_delta];
         [~,sol] = ode45(@eqgen,t_span,sol_guess);
 
         % generate equations 
 	    function dTdt_w = eqgen(~,T_w)
             
-            % pre-allocate
+            % ensure we have column vectors 
             dTdx_w = zeros(Wall_slices, 1);
+            Q_cond = zeros(Wall_slices, 1); 
             
-            cp_w = cp(T_w);
+            % Calculate K_w and cp
             K_w = K(T_w);
+            cp_w = cp(T_w);
                  
             % Q_cond AT WALL EDGES 
-            Q_cond(1) =  K_w(1)/b_x * (T_w(1+1) - T_w(1)) - Q_cond_aw;
+            Q_cond(1) =  K_w(1)/b_x * (T_w(2) - T_w(1)) - Q_cond_aw;
             Q_cond(W) =  K_w(W)/b_x * (T_w(W-1) - T_w(W)) - Q_cond_bw;
                                     
             % Q_cond IN THE WALL
-            for j = 2 : W - 1
-               dTdx_w(j) = T_w(j+1) + T_w(j-1) - 2 * T_w(j);
-               Q_cond(j) = K_w(j)/b_x * dTdx_w(j);
-            end
+            dTdx_w(2 : W - 1) = T_w(3: W) + T_w(1 : W - 2) - 2 * T_w(2 : W - 1);
+            Q_cond(2 : W - 1) = K_w(2 : W - 1)/b_x .* dTdx_w(2 : W - 1);
             
             % Generate ODEs
             Q_rad = As * F * sigma * (T_ext.^4 - T_w.^4);
-            dTdt_w = (Q_cond' + Q_rad) ./ (M_w * cp_w);
+            dTdt_w = (Q_cond + Q_rad) ./ (M_w * cp_w);
         end
     end   
 end  % RN_08_a2
