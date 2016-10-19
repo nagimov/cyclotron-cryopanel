@@ -5,26 +5,23 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     tic
     
     % ************************** COOL PROP ********************************
+    CP_dump = 20; % number of time steps before we dump & re-load the library 
     path_to_lib = 'D:\CoolProp_wrapper_fast'; %specify path to coolprop shared library
     path_to_include= 'D:\CoolProp_wrapper_fast'; %specify path to coolprop's include folder
     libname = 'libCoolProp'; % OSX and linux
         if ispc
             libname = 'CoolProp';
         end
-    CP_dump = 20; % how many time steps before we dump the library & re-load
-    loadcoolprop;     
-
+    addpath(path_to_lib)
+    addpath(path_to_include)
+    loadcoolprop; 
+       
     % Loading shared library
     function loadcoolprop 
-    if ~libisloaded('coolprop') %checking whether library is already loaded
-        addpath(path_to_lib)
-        addpath(path_to_include)
-        loadlibrary(libname,'CoolPropLib.h','includepath',...
-            path_to_include,'alias','coolprop'); % loading library with alias coolprop
-        disp('loaded CoolProp shared library.')
-        disp('loaded these functions: ')
-        libfunctions coolprop
-    end
+        if ~libisloaded('coolprop') %checking whether library is already loaded
+            loadlibrary(libname,'CoolPropLib.h','includepath',...
+                path_to_include,'alias','coolprop'); % loading library with alias coolprop
+        end
     end
     
     % ************************ PART I DATA ********************************
