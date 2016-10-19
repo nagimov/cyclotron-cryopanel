@@ -1,5 +1,6 @@
 function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
-    %Cool-prop wrappers 
+    % Cool-prop wrappers 
+    % Use HX_UA = 1000, k = 100 for low T solution 
     clc; clear;
     close all;
     tic
@@ -27,7 +28,7 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
     % ************************ PART I DATA ********************************
     % INTEGRATOR DATA
     t_delta = .1;  % time step, s
-    t = 50;  % number of time steps, -
+    t = 20;  % number of time steps, -
     HX_slices = 20;  % number of slices, -
     Wall_slices = 20;  % number of wall slices, -
     N = 1 + Wall_slices + 1;  % total length of slices across HX, - 
