@@ -1,5 +1,6 @@
 function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2 
-    %With radiative heat transfer (and wall-ext transfer as well)
+    % With radiative heat transfer (and wall-ext transfer as well)
+    % Use HX_UA = 1500 for low temperatures & factor of 20 in K
     clc; clear;
     close all;
     tic
@@ -39,7 +40,7 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     M_w = 1;  % mass of wall section, kg 
     b_x = 1;  % length of wall section, m 
     HX_UA_data = {'nitrogen', 3000; ...
-                    'helium', 5000}; % HX coefficient, W/K
+                    'helium', 3000}; % HX coefficient, W/K
     
     % RADIATION HEAT TRANSFER
     sigma = 5.676e-8; % Stefan-Boltzmann constant, W/m^2 * K^4
