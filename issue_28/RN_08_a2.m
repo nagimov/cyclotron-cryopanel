@@ -11,7 +11,7 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
         if ispc
             libname = 'CoolProp';
         end
-    CP_dump = 10; % how many time steps before we dump the library & re-load
+    CP_dump = 20; % how many time steps before we dump the library & re-load
     loadcoolprop;     
 
     % Loading shared library
@@ -41,13 +41,12 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     M = 1;  % mass of streams content within a cell, kg
     M_w = 1;  % mass of wall section, kg 
     b_x = 1;  % length of wall section, m 
-    k_x = 15;  % wall conductance coefficient, W/K
     HX_UA_data = {'nitrogen', 3000; ...
                     'helium', 5000}; % HX coefficient, W/K
     
     % RADIATION HEAT TRANSFER
     sigma = 5.676e-8; % Stefan-Boltzmann constant, W/m^2 * K^4
-    As = 1; % surface area that is "seen" in radiation heat transfer, m^2
+    As = 20; % surface area that is "seen" in radiation heat transfer, m^2
     F = 1; % view factor 
                 
     % INITIAL DATA
@@ -170,7 +169,7 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     % ************************ PART III PLOTS ***************************
     function plots 
     % HE PLOT 
-    plot(1:HX_slices, T_a_sol)
+    plot(1:HX_slices, T_a_sol, 'r')
     xlabel('Slices')
     ylabel('Temperature')
     title('He')
@@ -180,7 +179,7 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     
     % N2 PLOT
     figure
-    plot(1:HX_slices, T_b_sol)
+    plot(1:HX_slices, T_b_sol, 'b')
     xlabel('Slices')
     ylabel('Temperature')
     title('N_2')
@@ -225,10 +224,19 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
     ylabel('Heat')
     title('Q Plot')
     
+    figure
+    plot(1 : Wall_slices, squeeze(T_w_sol(HX_slices/2, :, :)), 'b')
+    xlabel('Wall Slices')
+    ylabel('Temperature')
+    title('Wall Middle Plot')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print(['plot_wall' num2str(HX_slices)],'-dpng','-r0')
+    
     % 3D PLOT
     figure 
     [X,Y] = meshgrid(1:HX_slices,1:N);
-    time = [1+1, round(t/4), round(t/2), t+1]; % which time to plot
+    time = [1+1, round(t/2), round(3*t/4), t+1]; % which time to plot
     colormap autumn 
     
     for I = 1:4 %4 sub-plots 
@@ -332,19 +340,21 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_a2
             
             % pre-allocate
             dTdx_w = zeros(Wall_slices, 1);
+            
+            cp_w = cp(T_w);
+            K_w = K(T_w);
                  
             % Q_cond AT WALL EDGES 
-            Q_cond(1) =  k_x/b_x * (T_w(1+1) - T_w(1)) - Q_cond_aw;
-            Q_cond(W) =  k_x/b_x * (T_w(W) - T_w(W-1)) - Q_cond_bw;
+            Q_cond(1) =  K_w(1)/b_x * (T_w(1+1) - T_w(1)) - Q_cond_aw;
+            Q_cond(W) =  K_w(W)/b_x * (T_w(W-1) - T_w(W)) - Q_cond_bw;
                                     
             % Q_cond IN THE WALL
             for j = 2 : W - 1
                dTdx_w(j) = T_w(j+1) + T_w(j-1) - 2 * T_w(j);
-               Q_cond(j) = k_x/b_x * dTdx_w(j);
+               Q_cond(j) = K_w(j)/b_x * dTdx_w(j);
             end
             
             % Generate ODEs
-            cp_w = cp(T_w);
             Q_rad = As * F * sigma * (T_ext.^4 - T_w.^4);
             dTdt_w = (Q_cond' + Q_rad) ./ (M_w * cp_w);
         end
