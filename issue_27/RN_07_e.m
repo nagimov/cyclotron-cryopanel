@@ -5,27 +5,29 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
     tic
     
     % ************************** COOL PROP ********************************
+    CP_dump = 20; % number of time steps before we dump & re-load the library 
     path_to_lib = 'D:\CoolProp_wrapper_fast'; %specify path to coolprop shared library
     path_to_include= 'D:\CoolProp_wrapper_fast'; %specify path to coolprop's include folder
-
-    % Loading shared library
-    if ~libisloaded('coolprop') %checking whether library is already loaded
-        addpath(path_to_lib)
-        addpath(path_to_include)
-        libname = 'libCoolProp'; % OSX and linux
+    libname = 'libCoolProp'; % OSX and linux
         if ispc
             libname = 'CoolProp';
         end
-        loadlibrary(libname,'CoolPropLib.h','includepath',path_to_include,'alias','coolprop'); % loading library with alias coolprop
-        disp('loaded CoolProp shared library.')
-        disp('loaded these functions: ')
-        libfunctions coolprop
+    addpath(path_to_lib)
+    addpath(path_to_include)
+    loadcoolprop; 
+       
+    % Loading shared library
+    function loadcoolprop 
+        if ~libisloaded('coolprop') %checking whether library is already loaded
+            loadlibrary(libname,'CoolPropLib.h','includepath',...
+                path_to_include,'alias','coolprop'); % loading library with alias coolprop
+        end
     end
     
     % ************************ PART I DATA ********************************
     % INTEGRATOR DATA
     t_delta = .1;  % time step, s
-    t = 20;  % number of time steps, -
+    t = 50;  % number of time steps, -
     HX_slices = 20;  % number of slices, -
     Wall_slices = 20;  % number of wall slices, -
     N = 1 + Wall_slices + 1;  % total length of slices across HX, - 
@@ -38,7 +40,7 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
     b_x = 1;  % length of wall section, m 
     k_x = 1000;  % wall conductance coefficient, W/K
     HX_UA_data = {'nitrogen', 3000; ...
-                    'helium', 5000}; % HX coefficient, W/K
+                    'helium', 3000}; % HX coefficient, W/K
 
     % INITIAL DATA
     fluid_a = 'helium';  % stream A fluid name
@@ -80,6 +82,12 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
             sol = solve_T(i,k);
             data(i, 2 : N - 1, k) = sol(end, :); % stack 
         end
+        
+        % dump and re-load coolprop
+        if rem(k,CP_dump) == 0 % check to see if time step is a multiple of CP_dump
+        unloadlibrary 'coolprop'
+        loadcoolprop; 
+        end 
     end
     
     % CONVERT TO T & PLOT
