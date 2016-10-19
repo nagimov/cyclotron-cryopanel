@@ -39,7 +39,6 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
     M = 1;  % mass of streams content within a cell, kg
     M_w = 1;  % mass of wall section, kg 
     b_x = 1;  % length of wall section, m 
-    k_x = 1000;  % wall conductance coefficient, W/K
     HX_UA_data = {'nitrogen', 3000; ...
                     'helium', 3000}; % HX coefficient, W/K
 
@@ -71,12 +70,12 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
     for k = 2 : t + 1     
         % h SOLVER
         [sol, fval, exitflag] = solve_h(k);
-		disp(['Time step completed ' num2str(k-1) 'h'...
+		disp(['Time step completed ' num2str(k-1) ...
             ' Time ' num2str(toc/60) ' min '...
             ' Fval ' num2str(sum(fval)) ...
             ' Exit Flag ' num2str(exitflag)])
-        data(:, 1, k) = sol(1 : 1 * HX_slices ); % stack 2-d to 3-d (stream A)
-        data(:, N, k) = sol(1 * HX_slices + 1 : 2 * HX_slices ); % stack 2-d to 3-d (stream B)
+        data(:, 1, k) = sol(:, 1); % stack 2-d to 3-d (stream A)
+        data(:, N, k) = sol(:, 2); % stack 2-d to 3-d (stream B)
         
         % T SOLVER
         for i = 1 : HX_slices
@@ -116,7 +115,7 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
 
     % FUNCTION THAT CALCULATES Q
     function Q_cond = Q_cond(h, p, T_w, fluid)
-        T = propsc_thp(h, p, fluid, lib)';
+        T = propsc_thp(h, p, fluid, lib);
         T_delta = T_w - T;
         Q_cond = HX_UA(fluid) / HX_slices * T_delta;
     end 
@@ -135,8 +134,8 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
     
         % convert
         for k = 1 : t + 1
-            T_a_sol(:,k) = propsc_thp(data(:,1,k)', p_a_0', fluid_a, lib);  % j = 1
-            T_b_sol(:,k) = propsc_thp(data(:,N,k)', p_b_0', fluid_b, lib);  % j = N
+            T_a_sol(:,k) = propsc_thp(data(:,1,k), p_a_0, fluid_a, lib);  % j = 1
+            T_b_sol(:,k) = propsc_thp(data(:,N,k), p_b_0, fluid_b, lib);  % j = N
         end
         
         T_w_sol = data(:, 2 : N - 1, :); % for j NOT than 1 or N 
@@ -218,28 +217,25 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
         % launch solver
         options = optimset('TolX', 1e-7, 'TolFun', 1e-7, ...
 		    			   'MaxFunEvals', 1e7, 'MaxIter', 1e7, ...
-		    			   'Display', 'iter');
+		    			   'Display', 'off');
 		[x, fval, exitflag] = fsolve(@eqgen, sol_guess, options);
 
         % compute difference between the equation and zero
 	    function F = eqgen(sol)
             % pre-allocate 
-	    	F_a = zeros(1, HX_slices);
-	    	F_b = zeros(1, HX_slices);
-			dhdx_a = zeros(1, HX_slices);
-			dhdx_b = zeros(1, HX_slices);
-
+			dhdx_a = zeros(HX_slices, 1);
+			dhdx_b = zeros(HX_slices, 1);
             
             % split solution vector 
-			h_a = sol(1 : 1 * HX_slices);
-			h_b = sol(1 * HX_slices + 1 : 2 * HX_slices);
+			h_a = sol(:, 1);
+			h_b = sol(:, 2);
             p_a = p_a_0;
             p_b = p_b_0;
             T_w_a = T_w_prev(:, 1);
             T_w_b = T_w_prev(:, Wall_slices);
 
-            dudt_a = dudt(h_a, h_a_prev', p_a, fluid_a);
-            dudt_b = dudt(h_b, h_b_prev', p_b, fluid_b);
+            dudt_a = dudt(h_a, h_a_prev, p_a, fluid_a);
+            dudt_b = dudt(h_b, h_b_prev, p_b, fluid_b);
             Q_cond_aw = Q_cond(h_a, p_a, T_w_a, fluid_a);
             Q_cond_bw = Q_cond(h_b, p_b, T_w_b, fluid_b);
             
@@ -250,15 +246,14 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
 					dhdx_b(HX_slices) = h_b_in - h_b(HX_slices);
 	            else
     				dhdx_a(i) = h_a(i - 1) - h_a(i);
-    				dhdx_b(HX_slices + 1 - i) = h_b(HX_slices + 2 - i) - h_b(HX_slices + 1 - i);
+    				dhdx_b(HX_slices + 1 - i) = h_b(HX_slices + 2 - i) ...
+                        - h_b(HX_slices + 1 - i);
 	            end
             end
             
             % final equations 
-			for i = 1 : HX_slices
-				F_a(i) = - dudt_a(i) * M / t_delta + m * dhdx_a(i) + Q_cond_aw(i);
-				F_b(i) = - dudt_b(i) * M / t_delta + m * dhdx_b(i) + Q_cond_bw(i);
-            end
+			F_a = - dudt_a * M / t_delta + m * dhdx_a + Q_cond_aw;
+			F_b = - dudt_b * M / t_delta + m * dhdx_b + Q_cond_bw;
             
 			% combine final exit vector
 			F = [F_a  F_b];
@@ -280,32 +275,30 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
  
         % launch ode45 
         sol_guess = T_w_prev(i,:)';
-        t_span = [k * t_delta, (k + 1) * t_delta];
+        t_span = [0, t_delta];
         [~,sol] = ode45(@eqgen,t_span,sol_guess);
 
         % generate equations 
 	    function dTdt_w = eqgen(~,T_w)
             
-            % pre-allocate
-   	    	dTdt_w = zeros(Wall_slices, 1);
+            % ensure we have column vectors 
             dTdx_w = zeros(Wall_slices, 1);
-            cp_w = zeros(Wall_slices, 1);      
+            Q_cond = zeros(Wall_slices, 1); 
+            
+            % Calculate K_w and cp
+            K_w = K(T_w);
+            cp_w = cp(T_w);
                  
             % Q_cond AT WALL EDGES 
-            Q_cond(1) =  k_x/b_x * (T_w(2) - T_w(1)) - Q_cond_aw;
-            Q_cond(W) =  k_x/b_x * (T_w(W-1) - T_w(W)) - Q_cond_bw;
+            Q_cond(1) =  K_w(1)/b_x * (T_w(2) - T_w(1)) - Q_cond_aw;
+            Q_cond(W) =  K_w(W)/b_x * (T_w(W-1) - T_w(W)) - Q_cond_bw;
                                     
             % Q_cond IN THE WALL
-            for j = 2 : W - 1
-               dTdx_w(j) = T_w(j+1) + T_w(j-1) - 2 * T_w(j);
-               Q_cond(j) = k_x/b_x * dTdx_w(j);
-            end
-            
-            % Evaluted Cp and generate ODEs        
-            for j = 1 : W             
-               cp_w(j) = cp(T_w(j));
-               dTdt_w(j) = Q_cond(j)/(M_w*cp_w(j));
-            end
+            dTdx_w(2 : W - 1) = T_w(3: W) + T_w(1 : W - 2) - 2 * T_w(2 : W - 1);
+            Q_cond(2 : W - 1) = K_w(2 : W - 1)/b_x .* dTdx_w(2 : W - 1);
+              
+            % Generate ODEs
+            dTdt_w = Q_cond ./ (M_w * cp_w);
         end
     end   
 end  % RN_07_e
