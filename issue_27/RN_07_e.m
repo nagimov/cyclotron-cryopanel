@@ -1,4 +1,5 @@
-function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e %Cool-prop wrappers 
+function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e
+    %Cool-prop wrappers 
     clc; clear;
     close all;
     tic
@@ -25,7 +26,7 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e %Cool-prop wrappers
     % INTEGRATOR DATA
     t_delta = .1;  % time step, s
     t = 20;  % number of time steps, -
-    HX_slices = 10;  % number of slices, -
+    HX_slices = 20;  % number of slices, -
     Wall_slices = 20;  % number of wall slices, -
     N = 1 + Wall_slices + 1;  % total length of slices across HX, - 
     lib = 'CP';  % property library to use
@@ -35,9 +36,9 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e %Cool-prop wrappers
     M = 1;  % mass of streams content within a cell, kg
     M_w = 1;  % mass of wall section, kg 
     b_x = 1;  % length of wall section, m 
-    k_x = 10;  % wall conductance coefficient, W/K
+    k_x = 1000;  % wall conductance coefficient, W/K
     HX_UA_data = {'nitrogen', 3000; ...
-                    'helium', 3000}; % HX coefficient, W/K
+                    'helium', 5000}; % HX coefficient, W/K
 
     % INITIAL DATA
     fluid_a = 'helium';  % stream A fluid name
@@ -135,7 +136,7 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e %Cool-prop wrappers
     % ************************ PART III PLOTS ***************************
     function plots 
     % HE PLOT 
-    plot(1:HX_slices, T_a_sol)
+    plot(1:HX_slices, T_a_sol, 'r')
     xlabel('Slices')
     ylabel('Temperature')
     title('He')
@@ -145,7 +146,7 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e %Cool-prop wrappers
     
     % N2 PLOT
     figure
-    plot(1:HX_slices, T_b_sol)
+    plot(1:HX_slices, T_b_sol, 'b')
     xlabel('Slices')
     ylabel('Temperature')
     title('N_2')
@@ -167,6 +168,15 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e %Cool-prop wrappers
     fig = gcf;
     fig.PaperPositionMode = 'auto';
     print(['plot_overall' num2str(HX_slices)],'-dpng','-r0')
+    
+    figure
+    plot(1 : Wall_slices, squeeze(T_w_sol(HX_slices/2, :, :)), 'b')
+    xlabel('Wall Slices')
+    ylabel('Temperature')
+    title('Wall Middle Plot')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print(['plot_wall' num2str(HX_slices)],'-dpng','-r0')
     
     % 3D PLOT
     figure 
@@ -273,8 +283,8 @@ function [data, T_a_sol, T_b_sol, T_w_sol] = RN_07_e %Cool-prop wrappers
             cp_w = zeros(Wall_slices, 1);      
                  
             % Q_cond AT WALL EDGES 
-            Q_cond(1) =  k_x/b_x * (T_w(1+1) - T_w(1)) - Q_cond_aw;
-            Q_cond(W) =  k_x/b_x * (T_w(W) - T_w(W-1)) - Q_cond_bw;
+            Q_cond(1) =  k_x/b_x * (T_w(2) - T_w(1)) - Q_cond_aw;
+            Q_cond(W) =  k_x/b_x * (T_w(W-1) - T_w(W)) - Q_cond_bw;
                                     
             % Q_cond IN THE WALL
             for j = 2 : W - 1
