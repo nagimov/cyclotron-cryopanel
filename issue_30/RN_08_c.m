@@ -1,5 +1,6 @@
 function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_c 
-    %With radiative heat transfer, k_x, U 
+    % With radiative heat transfer, k_x, U 
+    % Use HX_UA = 1500, K with a factor of 20
     clc; clear;
     close all;
     tic
@@ -87,8 +88,8 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_c
             ' Time ' num2str(toc/60) ' min '...
             ' Fval ' num2str(sum(fval)) ...
             ' Exit Flag ' num2str(exitflag)])
-        data(:, 1, k) = sol(1 : 1 * HX_slices ); % stack 2-d to 3-d (stream A)
-        data(:, N, k) = sol(1 * HX_slices + 1 : 2 * HX_slices ); % stack 2-d to 3-d (stream B)
+        data(:, 1, k) = sol(:, 1); % stack 2-d to 3-d (stream A)
+        data(:, N, k) = sol(:, 2); % stack 2-d to 3-d (stream B)
         
         % T SOLVER
         for i = 1 : HX_slices
@@ -246,6 +247,15 @@ function [Q, data, T_a_sol, T_b_sol, T_w_sol] = RN_08_c
     xlabel('Slices')
     ylabel('Heat')
     title('Q Plot')
+        
+    figure
+    plot(1 : Wall_slices, squeeze(T_w_sol(HX_slices/2, :, :)), 'b')
+    xlabel('Wall Slices')
+    ylabel('Temperature')
+    title('Wall Middle Plot')
+    fig = gcf;
+    fig.PaperPositionMode = 'auto';
+    print(['plot_wall' num2str(HX_slices)],'-dpng','-r0')
     
     % 3D PLOT
     figure 
