@@ -1,4 +1,4 @@
-function [T_a, T_b] = RN_03n % Most basic model 
+function [T_a, T_b] = RN_03n  % Most basic model 
     clc; clear all;
     close all;
     tic
