@@ -1,6 +1,5 @@
 function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = RN_09_b 
-    % Wall tail - with moving node
-    % For low T, use HX_UA = 1500 and a factor of 100 for K, p_atm/3
+    % Most complete 2-stream model, with "wall tail"
     clc; clear;
     close all;
     tic
@@ -66,21 +65,22 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
     p_atm = 101325; % define atmospheric pressure to be used as a reference, Pa 
     fluid_a = 'helium';  % stream A fluid name
     p_a_in = 1 * p_atm;  % inlet pressure of stream A, Pa
-    T_a_in = 100;  % inlet temperature of stream A, K
-    h_a_in = prop_htp(T_a_in, p_a_in, fluid_a, lib);  % inlet enthalpy of stream A, J/kg
+    q_a_in = .05;  % inlet temperature of stream A, K
+    h_a_in = prop_hqp(q_a_in, p_a_in, fluid_a, lib);  % inlet enthalpy of stream A, J/kg
     fluid_b = 'nitrogen';  % stream B fluid name
     p_b_in = 1 * p_atm;  % inlet pressure of stream B, Pa
     T_b_in = 200;  % inlet temperature of stream B, K
     h_b_in = prop_htp(T_b_in, p_b_in, fluid_b, lib);  % inlet enthalpy of stream B, J/kg
-    T_w_init = 150;  % initial wall temperature, K
+    T_w_init = 100;  % initial wall temperature, K
     T_ext_init = 300; % exterior temperature, K
+    T_a_in = 4; % Used only as a lower T limit for y-axis on plots
     
     % SET NOMINAL VALUES
     m_nom = 1; % nominal mass flow rate, kg/s
     T_nom = 150; % nomial temperature, K            *** need to use 'q' 
     p_nom = p_atm; % nomial pressure, Pa
-    HX_UA_nom_data = {'nitrogen', 3000; ...
-                        'helium', 3000}; % nomial HX coefficient, W/K
+    HX_UA_nom_data = {'nitrogen', 2000; ...
+                        'helium', 4000}; % nomial HX coefficient, W/K
     delta_p_nom_data = {'helium', p_atm / 3; ... 
                         'nitrogen', p_atm / 3}; % nomial pressure drop, Pa
     nom_values = {'helium', nom_calc(fluid_a);...
@@ -129,13 +129,13 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
         
         % T SOLVER
         for i = 1 : HX_slices
-            [time,sol] = solve_T(i,k);
+            [time,sol] = solve_T(i, k);
             data(i, 2 : N - 1, k) = sol(end, 1 : W2); % stack 2-d to 3-d in time (main wall)
             T_w3_data(i, :, k) = sol(end, W2 + 1 : W3); % stack 2-d to 3-d in time (wall tail)
         end
         
         % dump and re-load coolprop
-        if rem(k,CP_dump) == 0 % check to see if time step is a multiple of CP_dump
+        if rem(k, CP_dump) == 0 % check to see if time step is a multiple of CP_dump
         unloadlibrary 'coolprop'
         loadcoolprop; 
         end 
@@ -245,8 +245,10 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
         T_w_sol = data(:, 2 : N - 1, :); % for j NOT than 1 or N 
         
         for k = 1 : t + 1
-            T_a_sol(:,k) = propsc_thp(data(:, 1, k), p_a_0, fluid_a, lib);  % T for j = 1
-            T_b_sol(:,k) = propsc_thp(data(:, N, k), p_b_0, fluid_b, lib);  % T for j = N
+            T_a_sol(:,k) = props_thp(data(:, 1, k),...
+                p_a_data(1 : HX_slices, k), fluid_a, lib);  % T for j = 1
+            T_b_sol(:,k) = props_thp(data(:, N, k),...
+                p_b_data(1 : HX_slices, k), fluid_b, lib);  % T for j = N
         end
         
     end 
@@ -381,7 +383,7 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
 		[x, fval, exitflag] = fsolve(@eqgen, sol_guess, options);
 
         % compute difference between the equation and zero
-	    function F = eqgen(sol)
+	    function eps = eqgen(sol)
             
             % pre-allocate 
 			dhdx_a = zeros(HX_slices, 1);
@@ -423,13 +425,13 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
             end
                        
             % final equations 
-			F_a = - dudt_a * M / t_delta + m * dhdx_a ...
+			eps_a = - dudt_a * M / t_delta + m * dhdx_a ...
                     + Q_cond_aw + Q_rad_ab + Q_rad_ae;
-			F_b = - dudt_b * M / t_delta + m * dhdx_b ...
+			eps_b = - dudt_b * M / t_delta + m * dhdx_b ...
                     + Q_cond_bw + Q_rad_ba + Q_rad_be;
             
 			% combine final exit vector
-			F = [F_a  F_b];
+			eps = [eps_a  eps_b];
 		end
     end
 
@@ -460,7 +462,7 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
             Q_cond = zeros(W3, 1); 
             
             % Calculate K_w and cp
-            K_w = K(T_w);
+            K_w = K(T_w) * 50;
             cp_w = cp(T_w);
                  
             % Q_cond AT WALL EDGES 
