@@ -26,6 +26,7 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
     
     % ************************ PART I DATA ********************************
     % INTEGRATOR DATA
+    SWITCH = 0; % 1 for co-current, 0 for counter-current 
     t_delta = .1;  % time step, s
     t = 20;  % number of time steps, -
     HX_slices = 20;  % number of slices, -
@@ -413,16 +414,19 @@ function [data, p_a_data, p_b_data, T_a_sol, T_b_sol, T_w_sol, T_w3_data, Q] = R
             Q_rad_ae = Q_rad2(h_a, p_a, fluid_a);
             Q_rad_be = Q_rad2(h_b, p_b, fluid_b);
             
-			% enthalpy deltas
-			for i = 1 : HX_slices  % slicing loop                
-    			if i == 1
-					dhdx_a(1) = h_a_in - h_a(1);
-					dhdx_b(HX_slices) = h_b_in - h_b(HX_slices);
-	            else
-    				dhdx_a(i) = h_a(i - 1) - h_a(i);
-    				dhdx_b(HX_slices + 1 - i) = h_b(HX_slices + 2 - i) - h_b(HX_slices + 1 - i);
-	            end
-            end
+			% enthalpy deltas - stream A
+			dhdx_a(1) = h_a_in - h_a(1);
+    		dhdx_a(2 : HX_slices) = h_a(1 : HX_slices - 1) - h_a(2 : HX_slices);
+            
+            % enthalpy deltas - stream B 
+            if SWITCH == 1
+                dhdx_b(1) = h_b_in - h_b(1);
+                dhdx_b(2 : HX_slices) = h_b(1 : HX_slices - 1) - h_b(2 : HX_slices);
+            elseif SWITCH == 0 
+                dhdx_b(HX_slices) = h_b_in - h_b(HX_slices);
+                dhdx_b(HX_slices - 1 : -1 : 1) = h_b(HX_slices : -1 : 2)...
+                    - h_b(HX_slices - 1 : -1 : 1);
+            end 
                        
             % final equations 
 			eps_a = - dudt_a * M / t_delta + m * dhdx_a ...
