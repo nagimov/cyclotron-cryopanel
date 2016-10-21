@@ -24,6 +24,7 @@ function [T_a, T_b] = RN_03n % Most basic model
     end
 
     % INTEGRATOR DATA
+    SWITCH = 0; % 1 for co-current, 0 for counter-current 
     t_delta = 0.1;  % time step, s
     t = 20;  % number of time steps, -
     HX_slices = 20;  % number of slices, -
@@ -139,8 +140,8 @@ function [T_a, T_b] = RN_03n % Most basic model
 	    function eps = eqgen(sol)
 
             % pre-allocate 
-			h_a_delta = zeros(HX_slices, 1);
-			h_b_delta = zeros(HX_slices, 1);
+			dhdx_a = zeros(HX_slices, 1);
+			dhdx_b = zeros(HX_slices, 1);
 
             % split solution vector 
 			h_a = sol(:, 1);
@@ -153,21 +154,24 @@ function [T_a, T_b] = RN_03n % Most basic model
             dudt_b = dudt(h_b, h_b_prev, p_b, fluid_b);
 			Q_cond_a = Q_cond(h_a, p_a, h_b, p_b);
             Q_cond_b = -Q_cond_a; 
-
-    		% enthalpy deltas
-    		for i = 1 : HX_slices
-    			if i == 1
-					h_a_delta(1) = h_a_in - h_a(1);
-					h_b_delta(HX_slices) = h_b_in - h_b(HX_slices);
-	            else
-    				h_a_delta(i) = h_a(i - 1) - h_a(i);
-    				h_b_delta(HX_slices + 1 - i) = h_b(HX_slices + 2 - i) - h_b(HX_slices + 1 - i);
-	            end
-            end
+            
+			% enthalpy deltas - stream A
+			dhdx_a(1) = h_a_in - h_a(1);
+    		dhdx_a(2 : HX_slices) = h_a(1 : HX_slices - 1) - h_a(2 : HX_slices);
+            
+            % enthalpy deltas - stream B 
+            if SWITCH == 1
+                dhdx_b(1) = h_b_in - h_b(1);
+                dhdx_b(2 : HX_slices) = h_b(1 : HX_slices - 1) - h_b(2 : HX_slices);
+            elseif SWITCH == 0 
+                dhdx_b(HX_slices) = h_b_in - h_b(HX_slices);
+                dhdx_b(HX_slices - 1 : -1 : 1) = h_b(HX_slices : -1 : 2)...
+                    - h_b(HX_slices - 1 : -1 : 1);
+            end 
             
             % final equations 
-			eps_a = -dudt_a * M / t_delta + (m * h_a_delta + Q_cond_a);
-			eps_b = -dudt_b * M / t_delta + (m * h_b_delta + Q_cond_b);
+			eps_a = -dudt_a * M / t_delta + (m * dhdx_a + Q_cond_a);
+			eps_b = -dudt_b * M / t_delta + (m * dhdx_b + Q_cond_b);
                 
 			% final exit vector
 			eps = [eps_a  eps_b];
