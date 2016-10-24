@@ -27,6 +27,7 @@ function [data, T_data, T_v_data, p_data] = RN_10_b
     
     % ************************ SOLVER, HX DATA ****************************
     % SOLVER DATA
+    no = 2; % How many pairs of streams are there
     SWITCH = 0; % 1 for co-current, 0 for counter-current 
     t_delta = .1;  % time step, s
     t = 20;  % number of time steps, -
@@ -40,7 +41,7 @@ function [data, T_data, T_v_data, p_data] = RN_10_b
     w1 = wall_slices(1, :); % from stream A(C) to node
     w2 = w1 + wall_slices(2, :); % from node to stream B(D)
     w3 = w2 + wall_slices(3, :); % from node to tail 
-    n = 1 * ones(1, 2) + w2 + 1 * ones(1, 2); 
+    n = 1 * ones(1, no) + w2 + 1 * ones(1, no); 
     % (overall number of slices across HX)
 
     % HX DATA
@@ -97,21 +98,21 @@ function [data, T_data, T_v_data, p_data] = RN_10_b
     % j are the Wall_slices
     % k are the time steps 
     % ii is the side of the cryo-panel 
-    data = zeros(max(hx_slices), max(n), t + 1, 2);
+    data = zeros(max(hx_slices), max(n), t + 1, no);
     
     % data matrix converted into T
-    T_data = zeros(max(hx_slices), max(n), t + 1, 2);
+    T_data = zeros(max(hx_slices), max(n), t + 1, no);
     
     % stores wall tail T
-    T_v_data = zeros(max(hx_slices), max(w3-w2), t + 1, 2);
+    T_v_data = zeros(max(hx_slices), max(w3-w2), t + 1, no);
     
     % stores pressure 
-    p_data = zeros(max(hx_slices), 2, t + 1, 2);
-    h_0 = zeros(max(hx_slices), 2, 2);
-    p_0 = zeros(max(hx_slices), 2, 2);
+    p_data = zeros(max(hx_slices), 2, t + 1, no);
+    h_0 = zeros(max(hx_slices), 2, no);
+    p_0 = zeros(max(hx_slices), 2, no);
 
     % ************************ MAIN LOOPS *********************************
-    for ii = 1 : 2
+    for ii = 1 : no
         
         % Pull the right number of slices & rad data  
         HX_slices = hx_slices(ii);
@@ -185,7 +186,7 @@ function [data, T_data, T_v_data, p_data] = RN_10_b
     function h = hcalc(T, p, fluid)
         h = zeros(2); 
         for j = 1 : 2
-            for ii = 1 : 2
+            for ii = 1 : no
                 h(j, ii) = props_htp(T(j, ii), p(j, ii), fluid{j, ii});
             end
         end 
@@ -416,7 +417,7 @@ function [data, T_data, T_v_data, p_data] = RN_10_b
     ylabel('Temperature')
     
     % OVERALL PLOTS
-    for ii = 1 : 2
+    for ii = 1 : no
         figure
         hold on
         plot(1 : HX_slices, squeeze(T_data(:, 1, :, ii)), 'r')
