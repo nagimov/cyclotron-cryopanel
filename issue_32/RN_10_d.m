@@ -1,6 +1,6 @@
 function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
-    % Third version of the 4-stream model 
-    % First version with T_wB solver 
+    % Second version of the 4-stream model 
+    % Added flux to "middle walls" 
     clc; clear;
     close all;
     tic
@@ -462,6 +462,7 @@ function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
     function plots
         
     % STREAM PLOTS
+    figure 
     subplot(2, 2, 1)
     plot(1 : HX_slices, squeeze(T_data(:, 1, :, 1)), 'r')
     title('Stream A')
@@ -525,8 +526,14 @@ function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
     xlabel('Wall Slices')
     ylabel('Temperature')
     
-    % OVERALL PLOTS
+    % 3D PLOT PREP
+    [X, Y] = meshgrid(1 : HX_slices, 1 : N); % get a mesh grid
+    time = [2, round(t / 2), round(3 * t / 4), t + 1]; % which times to plot
+    colormap autumn 
+    
     for ii = 1 : no
+
+        % OVERALL PLOTS
         figure
         hold on
         plot(1 : HX_slices, squeeze(T_data(:, 1, :, ii)), 'r')
@@ -537,6 +544,25 @@ function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
         ylabel('Temperature')
         name = pull_title(ii);
         title(name);
+        
+        % 3D PLOT
+        FigHandle = figure;
+        set(FigHandle, 'Position', [150, 50, 1200, 700]);
+        for I = 1 : 4 %4 sub-plots
+            T_max = max(T_in(:, ii));
+            T_min = min(T_in(:, ii));
+            subplot(2, 2, I)
+            surf(X, Y, T_data(:, :, time(I), ii)')
+            xlabel('Length Slices')
+            ylabel('Wall Slices')
+            zlabel('Temperature')
+            title(['Time step ' num2str(time(I))])
+            axis([1 HX_slices 1 N T_min T_max])
+            shading interp;
+            caxis manual
+            caxis([T_min T_max]); % fix color distribution to always be between Tmin, Tmax
+            colorbar 
+        end 
     end
     end
 end %RN_10_d
