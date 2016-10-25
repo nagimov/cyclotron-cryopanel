@@ -36,8 +36,8 @@ function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
     Wall_slices_A = [10, 10, 10];
         % stream A(C) to node, -
         % stream node to stream B(D), -
-        % node to tail 
-    Wall_slices_B = 20; % middle sections 
+        % node to tail, -
+    Wall_slices_B = 20; % middle sections, -
    
     % CALCULATE WALL SLICE INTERMEDIATES 
     WA1 = Wall_slices_A(1); % from stream A(C) to node
@@ -83,8 +83,8 @@ function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
     m_nom = 1; % nominal mass flow rate, kg/s
     T_nom = 100; % nomial temperature, K            
     p_nom = p_atm; % nomial pressure, Pa
-    HX_UA_nom_data = {'nitrogen', 3000; ...
-                        'helium', 3000}; % nomial HX coefficient, W/K
+    HX_UA_nom_data = {'nitrogen', 2500; ...
+                        'helium', 2500}; % nomial HX coefficient, W/K
     delta_p_nom_data = {'helium', p_atm / 3; ... 
                         'nitrogen', p_atm / 3}; % nomial pressure drop, Pa
     nom_values = {'helium', nom_calc('helium'); ...
@@ -176,8 +176,10 @@ function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
                 p_data(:, 1, 1, ii), fluid{2, ii});  % T for j = N
             
             % get T for k = 1
-            T_data(:, 1, 1, ii) = T_in(1, ii) * ones(HX_slices, 1);
-            T_data(:, N, 1, ii) = T_in(2, ii) * ones(HX_slices, 1); 
+            T_data(:, 1, 1, ii) = props_thp(data(:, 1, 1, ii), ...
+                p_data(:, 1, 1, ii), fluid{1, ii}); % T for j = 1
+            T_data(:, N, 1, ii) = props_thp(data(:, N, 1, ii), ...
+                p_data(:, 1, 1, ii), fluid{2, ii});  % T for j = N
             
             % dump and re-load coolprop
             if rem(k, CP_dump) == 0 
@@ -198,7 +200,11 @@ function [data, T_data, T_v_data, T_wB_data, p_data] = RN_10_d
         h = zeros(2); 
         for j = 1 : 2
             for ii = 1 : no
-                h(j, ii) = props_htp(T(j, ii), p(j, ii), fluid{j, ii});
+                if T(j, ii) <= 1 % this means we have q as an input
+                    h(j, ii) = prop_hqp(T(j, ii), p(j, ii), fluid{j, ii}, 'CP');
+                else % this means we have T as an input 
+                    h(j, ii) = props_htp(T(j, ii), p(j, ii), fluid{j, ii});
+                end
             end
         end 
     end 
